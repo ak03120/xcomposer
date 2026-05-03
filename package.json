@@ -13,8 +13,11 @@
     "deploy": "wrangler pages deploy dist"
   },
   "dependencies": {
+    "@better-auth/kysely-adapter": "^1.6.9",
     "@material/web": "^2.4.1",
     "better-auth": "^1.6.9",
+    "kysely": "^0.28.17",
+    "kysely-d1": "^0.4.0",
     "pinia": "^3.0.4",
     "ulidx": "^2.4.1",
     "vue": "^3.5.0",

@@ -3,7 +3,6 @@ import { onMounted, ref } from "vue"
 import { useRoute, useRouter } from "vue-router"
 import Footer from "@/components/Footer.vue"
 import NavBar from "@/components/NavBar.vue"
-import { authClient } from "@/lib/auth-client"
 
 const route = useRoute()
 const router = useRouter()
@@ -16,28 +15,36 @@ const saveAccount = async () => {
 
   try {
     const code = route.query.code
+    const state = route.query.state
 
     if (typeof code !== "string" || !code) {
       throw new Error("X 認証コードが見つかりません。")
     }
 
-    const session = await authClient.getSession()
-    const googleSub = session.data?.user?.id
-
-    if (!googleSub) {
-      throw new Error("Google ログイン状態を確認できませんでした。")
+    const savedState = sessionStorage.getItem("x_oauth_state")
+    if (!savedState || savedState !== state) {
+      throw new Error("OAuth state が一致しません。")
     }
 
-    await fetch("/api/x/accounts", {
+    const codeVerifier = sessionStorage.getItem("x_oauth_code_verifier")
+    if (!codeVerifier) {
+      throw new Error("code_verifier が見つかりません。")
+    }
+
+    sessionStorage.removeItem("x_oauth_state")
+    sessionStorage.removeItem("x_oauth_code_verifier")
+
+    const response = await fetch("/api/x/auth/callback", {
       method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        googleSub,
-        accessToken: code,
-      }),
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code, codeVerifier }),
     })
+
+    const data = (await response.json()) as { ok?: boolean; error?: string }
+
+    if (!response.ok) {
+      throw new Error(data.error || "X アカウント保存に失敗しました。")
+    }
 
     await router.replace("/")
   } catch (error) {

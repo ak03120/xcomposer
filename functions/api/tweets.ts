@@ -1,63 +1,33 @@
-type Env = {
-  X_ACCOUNTS?: string
-}
-
-type AccountConfig = {
-  id: string
-  label: string
-  username?: string
-  bearerToken?: string
-}
+import type { Env } from "../lib/env"
+import { createAuth } from "../lib/auth"
+import { json } from "../lib/http"
+import { withTokenRefresh } from "../lib/x"
+import type { XAccount } from "../lib/x"
 
 type XUploadResponse = {
-  data?: {
-    id?: string
-  }
+  data?: { id?: string }
   errors?: unknown
 }
 
 type XTweetResponse = {
-  data?: {
-    id?: string
-    text?: string
-  }
+  data?: { id?: string; text?: string }
   errors?: unknown
-}
-
-const json = (body: unknown, init?: ResponseInit) =>
-  new Response(JSON.stringify(body), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...init?.headers,
-    },
-  })
-
-const parseAccounts = (env: Env) => {
-  if (!env.X_ACCOUNTS) {
-    return []
-  }
-
-  const accounts = JSON.parse(env.X_ACCOUNTS) as AccountConfig[]
-  return accounts.filter((account) => account.id && account.label && account.bearerToken)
 }
 
 const fileToBase64 = async (file: File) => {
   const bytes = new Uint8Array(await file.arrayBuffer())
   let binary = ""
-
-  for (let index = 0; index < bytes.length; index += 1) {
-    binary += String.fromCharCode(bytes[index])
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i])
   }
-
   return btoa(binary)
 }
 
-const uploadImage = async (file: File, bearerToken: string) => {
+const uploadImage = async (file: File, accessToken: string) => {
   const response = await fetch("https://api.x.com/2/media/upload", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${bearerToken}`,
+      authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -75,11 +45,11 @@ const uploadImage = async (file: File, bearerToken: string) => {
   return data.data.id
 }
 
-const createTweet = async (text: string, mediaIds: string[], bearerToken: string) => {
+const createTweet = async (text: string, mediaIds: string[], accessToken: string) => {
   const response = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${bearerToken}`,
+      authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -97,22 +67,24 @@ const createTweet = async (text: string, mediaIds: string[], bearerToken: string
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  let accounts: AccountConfig[]
+  const auth = createAuth(env)
+  const session = await auth.api.getSession({ headers: request.headers })
 
-  try {
-    accounts = parseAccounts(env)
-  } catch {
-    return json({ error: "X_ACCOUNTS の JSON を読み取れませんでした。" }, { status: 500 })
+  if (!session?.user?.id) {
+    return json({ error: "認証が必要です。" }, { status: 401 })
   }
 
   const formData = await request.formData()
   const accountId = formData.get("accountId")
-  const bearerToken = formData.get("bearerToken")
   const text = formData.get("text")
-  const images = formData.getAll("images").filter((value): value is File => value instanceof File)
+  const images = formData.getAll("images").filter((v): v is File => v instanceof File)
 
-  if (typeof accountId !== "string" || typeof text !== "string" || !accountId || !text.trim()) {
-    return json({ error: "アカウントと本文を指定してください。" }, { status: 400 })
+  if (typeof accountId !== "string" || !accountId) {
+    return json({ error: "accountId は必須です。" }, { status: 400 })
+  }
+
+  if (typeof text !== "string" || !text.trim()) {
+    return json({ error: "本文は必須です。" }, { status: 400 })
   }
 
   if (text.length > 280) {
@@ -123,17 +95,43 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "画像は最大 4 枚までです。" }, { status: 400 })
   }
 
-  const account = accounts.find((item) => item.id === accountId)
-  const token = account?.bearerToken || (typeof bearerToken === "string" ? bearerToken : "")
+  const tokenIndex = parseInt(accountId, 10)
 
-  if (!token) {
+  if (isNaN(tokenIndex)) {
+    return json({ error: "accountId が不正です。" }, { status: 400 })
+  }
+
+  const row = await env.DB
+    .prepare(`SELECT "xAccessTokens", "xRefreshTokens" FROM "user" WHERE "id" = ?1`)
+    .bind(session.user.id)
+    .first<{ xAccessTokens: string; xRefreshTokens: string }>()
+
+  if (!row) {
+    return json({ error: "ユーザーが見つかりません。" }, { status: 404 })
+  }
+
+  const accessTokens = JSON.parse(row.xAccessTokens) as string[]
+  const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
+  const accessToken = accessTokens[tokenIndex]
+
+  if (!accessToken) {
     return json({ error: "指定されたアカウントが見つかりません。" }, { status: 404 })
   }
 
+  const account: XAccount = {
+    userId: session.user.id,
+    tokenIndex,
+    accessToken,
+    refreshToken: refreshTokens[tokenIndex] || null,
+  }
+
   try {
-    const mediaIds = await Promise.all(images.map((image) => uploadImage(image, token)))
-    const tweet = await createTweet(text.trim(), mediaIds, token)
-    return json({ id: tweet.id, text: tweet.text, mediaIds })
+    const tweet = await withTokenRefresh(env.DB, account, env.X_CLIENT_ID || "", env.X_CLIENT_SECRET || "", async (token) => {
+      const mediaIds = await Promise.all(images.map((image) => uploadImage(image, token)))
+      return createTweet(text.trim(), mediaIds, token)
+    })
+
+    return json({ id: tweet.id, text: tweet.text })
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "投稿に失敗しました。" }, { status: 502 })
   }

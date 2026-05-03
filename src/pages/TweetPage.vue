@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
-import AddAccountDialog from "@/components/AddAccountDialog.vue"
 import Footer from "@/components/Footer.vue"
 import NavBar from "@/components/NavBar.vue"
 import { authClient } from "@/lib/auth-client"
-import { postTweetToX } from "@/lib/xApi"
 import { useAccountsStore } from "@/stores/accounts"
 
 type SelectedImage = {
   id: string
   file: File
   url: string
-}
-
-type AddAccountDialogExpose = {
-  open: () => void
 }
 
 const maxTweetLength = 280
@@ -28,7 +22,6 @@ const statusMessage = ref("")
 const errorMessage = ref("")
 const accountStore = useAccountsStore()
 const { accounts, selectedAccount, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
-const accountDialog = ref<AddAccountDialogExpose | null>(null)
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const session = authClient.useSession()
 const isAuthResolved = computed(() => !session.value.isPending)
@@ -94,22 +87,61 @@ const openFilePicker = () => {
   fileInput.value?.click()
 }
 
-const openAccountDialog = () => {
+const generateCodeVerifier = () => {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return btoa(String.fromCharCode(...array))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+}
+
+const generateCodeChallenge = async (verifier: string) => {
+  const data = new TextEncoder().encode(verifier)
+  const digest = await crypto.subtle.digest("SHA-256", data)
+  return btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "")
+}
+
+const startXOAuth = async () => {
   if (!isSignedIn.value) {
     return
   }
 
   statusMessage.value = ""
   errorMessage.value = ""
-  accountDialog.value?.open()
-}
 
-const addAccount = (authToken: string) => {
-  accountStore.addLocalAccount({
-    authToken,
-  })
-  statusMessage.value = "アカウントを追加しました。"
-  errorMessage.value = ""
+  try {
+    const response = await fetch("/api/x/auth/start")
+    const data = await response.json<{ clientId?: string; redirectUri?: string; error?: string }>()
+
+    if (!response.ok) {
+      throw new Error(data.error || "X 認証を開始できませんでした。")
+    }
+
+    const codeVerifier = generateCodeVerifier()
+    const codeChallenge = await generateCodeChallenge(codeVerifier)
+    const state = crypto.randomUUID()
+
+    sessionStorage.setItem("x_oauth_code_verifier", codeVerifier)
+    sessionStorage.setItem("x_oauth_state", state)
+
+    const params = new URLSearchParams({
+      response_type: "code",
+      client_id: data.clientId || "",
+      redirect_uri: data.redirectUri || "",
+      scope: "tweet.read tweet.write users.read offline.access",
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
+    })
+
+    window.location.href = `https://twitter.com/i/oauth2/authorize?${params}`
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "X 認証を開始できませんでした。"
+  }
 }
 
 const signInWithGoogle = async () => {
@@ -173,22 +205,20 @@ const postTweet = async () => {
   statusMessage.value = ""
   errorMessage.value = ""
 
-  const bearerToken = selectedAccount.value?.bearerToken
-
-  if (!bearerToken) {
-    errorMessage.value = "このアカウントにはブラウザから投稿するためのトークンがありません。"
-    isPosting.value = false
-    return
-  }
-
   try {
-    const tweet = await postTweetToX({
-      text: tweetText.value.trim(),
-      images: selectedImages.value.map((image) => image.file),
-      bearerToken,
-    })
+    const formData = new FormData()
+    formData.append("accountId", selectedAccountId.value)
+    formData.append("text", tweetText.value.trim())
+    selectedImages.value.forEach((image) => formData.append("images", image.file))
 
-    statusMessage.value = tweet.id ? `投稿しました: ${tweet.id}` : "投稿しました。"
+    const response = await fetch("/api/tweets", { method: "POST", body: formData })
+    const data = await response.json<{ id?: string; error?: string }>()
+
+    if (!response.ok) {
+      throw new Error(data.error || "投稿に失敗しました。")
+    }
+
+    statusMessage.value = data.id ? `投稿しました: ${data.id}` : "投稿しました。"
     tweetText.value = ""
     selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
     selectedImages.value = []
@@ -306,8 +336,8 @@ onBeforeUnmount(() => {
         </md-outlined-select>
 
         <div class="stack-section">
-          <md-filled-tonal-button class="add-account-button" type="button" :disabled="isComposerDisabled" @click="openAccountDialog">
-            アカウントを追加
+          <md-filled-tonal-button class="add-account-button" type="button" :disabled="isComposerDisabled" @click="startXOAuth">
+            Xアカウントを追加
           </md-filled-tonal-button>
           <span v-if="selectedAccount" class="selected-account">
             {{ selectedAccount.label }}<span v-if="selectedAccount.username"> / @{{ selectedAccount.username }}</span>
@@ -358,7 +388,6 @@ onBeforeUnmount(() => {
     </section>
 
     <Footer />
-    <AddAccountDialog ref="accountDialog" @add="addAccount" />
   </main>
 </template>
 

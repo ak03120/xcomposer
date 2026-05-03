@@ -1,101 +1,59 @@
+import type { Env } from "../lib/env"
 import { createAuth } from "../lib/auth"
-import { getAccountByGoogleSub } from "../lib/d1"
-
-type Env = {
-  DB: D1Database
-  BETTER_AUTH_SECRET?: string
-  BETTER_AUTH_URL?: string
-  GOOGLE_CLIENT_ID?: string
-  GOOGLE_CLIENT_SECRET?: string
-}
-
-type XMeResponse = {
-  data?: {
-    id: string
-    name: string
-    username: string
-    profile_image_url?: string
-  }
-}
+import { json } from "../lib/http"
+import { getXMe, withTokenRefresh } from "../lib/x"
+import type { XAccount } from "../lib/x"
 
 type AccountOption = {
   id: string
   label: string
   username?: string
   image?: string
-  bearerToken: string
-  refreshToken?: string
-  tokenIndex: number
-}
-
-const json = (body: unknown, init?: ResponseInit) =>
-  new Response(JSON.stringify(body), {
-    ...init,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...init?.headers,
-    },
-  })
-
-const getXMe = async (accessToken: string) => {
-  const response = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", {
-    headers: {
-      authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error("X アカウント情報の取得に失敗しました。")
-  }
-
-  const data = (await response.json()) as XMeResponse
-
-  if (!data.data?.id) {
-    throw new Error("X アカウント情報が不正です。")
-  }
-
-  return data.data
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const auth = createAuth(env)
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  })
+  const session = await auth.api.getSession({ headers: request.headers })
 
   if (!session?.user?.id) {
     return json({ error: "認証が必要です。" }, { status: 401 })
   }
 
-  const accountRecord = await getAccountByGoogleSub(env.DB, session.user.id)
+  const row = await env.DB
+    .prepare(`SELECT "xAccessTokens", "xRefreshTokens" FROM "user" WHERE "id" = ?1`)
+    .bind(session.user.id)
+    .first<{ xAccessTokens: string; xRefreshTokens: string }>()
 
-  if (!accountRecord) {
+  if (!row) {
     return json({ accounts: [] })
   }
 
-  const pairs = accountRecord.xAccessTokens.map((accessToken, index) => ({
-    accessToken,
-    refreshToken: accountRecord.xRefreshTokens[index] || "",
-  }))
+  const accessTokens = JSON.parse(row.xAccessTokens) as string[]
+  const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
+  const clientId = env.X_CLIENT_ID || ""
+  const clientSecret = env.X_CLIENT_SECRET || ""
 
   const settled = await Promise.allSettled(
-    pairs.map(async ({ accessToken }, index) => {
-      const me = await getXMe(accessToken)
+    accessTokens.map(async (accessToken, index) => {
+      const account: XAccount = {
+        userId: session.user.id,
+        tokenIndex: index,
+        accessToken,
+        refreshToken: refreshTokens[index] || null,
+      }
+
+      const me = await withTokenRefresh(env.DB, account, clientId, clientSecret, getXMe)
 
       return {
-        id: `${accountRecord.id}-${index}`,
+        id: String(index),
         label: me.name,
         username: me.username,
         image: me.profile_image_url,
-        bearerToken: accessToken,
-        refreshToken: accountRecord.xRefreshTokens[index] || undefined,
-        tokenIndex: index,
       } satisfies AccountOption
     }),
   )
 
   const accounts: AccountOption[] = []
-
   for (const result of settled) {
     if (result.status === "fulfilled") {
       accounts.push(result.value)
