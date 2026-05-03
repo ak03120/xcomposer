@@ -6,5 +6,5 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "xcomposer"
-database_id = "0a2ddf6c-30f7-4a97-af22-c6d3d9c0661b"
+database_id = "4f75e953-549a-4d95-9834-eaae5152867e"
 migrations_dir = "db/migrations"
