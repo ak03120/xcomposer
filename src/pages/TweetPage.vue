@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
         >
           <md-list-item>
             <div slot="headline">{{ session.data?.user?.name }}</div>
-            <div slot="supporting-text">{{ session.data?.user?.email }}</div>
+            <div slot="supporting-text" class="account-menu-email">{{ session.data?.user?.email }}</div>
           </md-list-item>
           <md-divider></md-divider>
           <md-menu-item @click="signOut">
@@ -497,6 +497,15 @@ md-outlined-text-field,
   display: block;
   border-radius: 999px;
   object-fit: cover;
+}
+
+.account-menu-email {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
 }
 
 .file-input {
