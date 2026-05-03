@@ -35,17 +35,7 @@ const isAccountMissing = computed(() => !selectedAccountId.value)
 const isTweetMissing = computed(() => tweetText.value.trim().length === 0)
 const shouldShowAccountError = computed(() => hasTriedSubmit.value && isAccountMissing.value)
 const shouldShowTweetError = computed(() => hasTriedSubmit.value && (isTweetMissing.value || remainingCharacters.value < 0))
-const accountSupportingText = computed(() => {
-  if (!isSignedIn.value) {
-    return "ログインしていません"
-  }
-
-  if (shouldShowAccountError.value) {
-    return "投稿アカウントは必須です"
-  }
-
-  return ""
-})
+const accountSupportingText = computed(() => shouldShowAccountError.value ? "投稿アカウントは必須です" : "")
 const tweetSupportingText = computed(() => {
   if (shouldShowTweetError.value && isTweetMissing.value) {
     return "本文は必須です"
