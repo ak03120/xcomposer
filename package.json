@@ -1,0 +1,32 @@
+{
+  "name": "xcomposer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "concurrently -k -n wrangler,vite -c green,blue \"pnpm dev:functions\" \"pnpm dev:vite\"",
+    "dev:vite": "vite",
+    "dev:functions": "wrangler pages dev dist --port 8788",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "wrangler pages dev dist",
+    "deploy": "wrangler pages deploy dist"
+  },
+  "dependencies": {
+    "@material/web": "^2.4.1",
+    "better-auth": "^1.6.9",
+    "pinia": "^3.0.4",
+    "ulidx": "^2.4.1",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260503.1",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "concurrently": "^9.2.1",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0",
+    "vue-tsc": "^3.0.0",
+    "wrangler": "^4.0.0"
+  }
+}
