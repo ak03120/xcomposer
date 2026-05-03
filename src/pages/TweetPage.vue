@@ -40,10 +40,6 @@ const accountSupportingText = computed(() => {
     return "ログインしていません"
   }
 
-  if (isSignedIn.value && !accounts.value.length) {
-    return "投稿アカウントがありません"
-  }
-
   if (shouldShowAccountError.value) {
     return "投稿アカウントは必須です"
   }
