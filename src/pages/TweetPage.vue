@@ -505,7 +505,10 @@ md-outlined-text-field,
 }
 
 .account-menu-email {
-  word-break: break-all;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--md-sys-color-on-surface-variant);
   opacity: 0.7;
 }
