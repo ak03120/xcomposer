@@ -273,7 +273,6 @@ onBeforeUnmount(() => {
           v-else
           id="google-account-button"
           class="google-account-button"
-          aria-label="Google アカウントメニュー"
           type="button"
           @click="toggleAccountMenu"
         >
@@ -295,6 +294,7 @@ onBeforeUnmount(() => {
           anchor="google-account-button"
           positioning="popover"
           quick
+          class="account-menu"
         >
           <md-list-item>
             <div slot="headline">{{ session.data?.user?.name }}</div>
@@ -497,6 +497,11 @@ md-outlined-text-field,
   display: block;
   border-radius: 999px;
   object-fit: cover;
+}
+
+.account-menu {
+  --md-menu-container-max-inline-size: 280px;
+  max-width: 280px;
 }
 
 .account-menu-email {
