@@ -297,8 +297,8 @@ onBeforeUnmount(() => {
           quick
         >
           <md-list-item>
-            <div slot="headline">{{ session.value.data?.user?.name }}</div>
-            <div slot="supporting-text">{{ session.value.data?.user?.email }}</div>
+            <div slot="headline">{{ session.data?.user?.name }}</div>
+            <div slot="supporting-text">{{ session.data?.user?.email }}</div>
           </md-list-item>
           <md-divider></md-divider>
           <md-menu-item @click="signOut">
@@ -317,7 +317,7 @@ onBeforeUnmount(() => {
       <form class="compose-form" @submit.prevent="postTweet">
         <md-outlined-select
           class="account-select"
-          label="投稿アカウント"
+          label="投稿者アカウント"
           required
           :value="selectedAccountId"
           :disabled="!isSignedIn || isLoadingAccounts || isPosting"
