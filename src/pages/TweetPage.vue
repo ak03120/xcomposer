@@ -295,6 +295,7 @@ onBeforeUnmount(() => {
           anchor="google-account-button"
           positioning="popover"
           quick
+          style="max-width: 240px"
         >
           <md-list-item>
             <div slot="headline">{{ session.data?.user?.name }}</div>
@@ -500,7 +501,7 @@ md-outlined-text-field,
 }
 
 .account-menu-email {
-  max-width: 200px;
+  max-width: 192px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
