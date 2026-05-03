@@ -295,7 +295,6 @@ onBeforeUnmount(() => {
           anchor="google-account-button"
           positioning="popover"
           quick
-          style="max-width: 240px"
         >
           <md-list-item>
             <div slot="headline">{{ session.data?.user?.name }}</div>
@@ -358,7 +357,7 @@ onBeforeUnmount(() => {
 
         <div class="stack-section">
           <div class="media-action">
-            <md-filled-tonal-icon-button type="button" aria-label="画像を追加" :disabled="!isSignedIn || selectedImages.length >= 4 || isPosting" @click="openFilePicker">
+            <md-filled-tonal-icon-button type="button" :disabled="!isSignedIn || selectedImages.length >= 4 || isPosting" @click="openFilePicker">
               <svg class="image-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="currentColor" d="M5 21q-.825 0-1.412-.587Q3 19.825 3 19V5q0-.825.588-1.412Q4.175 3 5 3h14q.825 0 1.413.588Q21 4.175 21 5v14q0 .825-.587 1.413Q19.825 21 19 21Zm0-2h14V5H5Zm1-2h12l-3.75-5-3 4L9 13Zm-1 2V5Z" />
               </svg>
@@ -501,10 +500,7 @@ md-outlined-text-field,
 }
 
 .account-menu-email {
-  max-width: 192px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
   color: var(--md-sys-color-on-surface-variant);
   opacity: 0.7;
 }
