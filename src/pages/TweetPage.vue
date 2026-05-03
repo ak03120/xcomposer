@@ -145,7 +145,10 @@ const startXOAuth = async () => {
   }
 }
 
+const isSigningInWithGoogle = ref(false)
+
 const signInWithGoogle = async () => {
+  isSigningInWithGoogle.value = true
   await authClient.signIn.social({
     provider: "google",
     callbackURL: window.location.origin,
@@ -261,6 +264,7 @@ onBeforeUnmount(() => {
           v-if="!isSignedIn"
           class="nav-auth-button"
           type="button"
+          :disabled="isSigningInWithGoogle"
           @click="signInWithGoogle"
         >
           Googleでログイン
