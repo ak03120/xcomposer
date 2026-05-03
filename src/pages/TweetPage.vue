@@ -504,6 +504,11 @@ md-outlined-text-field,
   max-width: 280px;
 }
 
+.account-menu md-list-item {
+  --md-list-item-leading-space: 16px;
+  --md-list-item-trailing-space: 16px;
+}
+
 .account-menu-email {
   display: block;
   overflow: hidden;
