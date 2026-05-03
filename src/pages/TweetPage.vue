@@ -266,7 +266,7 @@ onBeforeUnmount(() => {
             v-if="session.data?.user?.image"
             class="google-avatar"
             :src="session.data.user.image"
-            :alt="session.data.user.name || 'Google account'"
+            :alt="session.data.user.name"
           />
           <svg v-else class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.9-5.4 3.9-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.6 3.6 14.5 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12S6.9 21.3 12 21.3c6.9 0 8.6-4.8 8.6-7.3 0-.5-.1-.9-.1-1.3Z"/>
@@ -282,14 +282,9 @@ onBeforeUnmount(() => {
           quick
           class="account-menu"
         >
-          <md-list-item>
-            <div slot="headline">{{ session.data?.user?.name }}</div>
-            <div slot="supporting-text" class="account-menu-email">{{ session.data?.user?.email }}</div>
-          </md-list-item>
-          <md-divider></md-divider>
-          <md-menu-item @click="signOut">
-            <div slot="headline">ログアウト</div>
-          </md-menu-item>
+        <md-menu-item @click="signOut">
+          <div slot="headline">ログアウト</div>
+        </md-menu-item>
         </md-menu>
         </template>
       </template>
@@ -483,25 +478,6 @@ md-outlined-text-field,
   display: block;
   border-radius: 999px;
   object-fit: cover;
-}
-
-.account-menu {
-  --md-menu-container-max-inline-size: 280px;
-  max-width: 280px;
-}
-
-.account-menu md-list-item {
-  --md-list-item-leading-space: 16px;
-  --md-list-item-trailing-space: 16px;
-}
-
-.account-menu-email {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--md-sys-color-on-surface-variant);
-  opacity: 0.7;
 }
 
 .file-input {
