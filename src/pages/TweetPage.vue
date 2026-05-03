@@ -311,8 +311,7 @@ onBeforeUnmount(() => {
 
     <section class="compose-surface">
       <header class="page-header">
-        <h1>ツイートを作成</h1>
-        <p>アカウントを選択し、本文と画像を添えて X に投稿します。</p>
+        <h1>ポストを作成</h1>
       </header>
 
       <form class="compose-form" @submit.prevent="postTweet">
