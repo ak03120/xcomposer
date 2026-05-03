@@ -34,6 +34,9 @@ export const useAccountsStore = defineStore("accounts", () => {
       }
 
       accounts.value = data.accounts || []
+      if (accounts.value.length) {
+        selectedAccountId.value = accounts.value[0].id
+      }
     } finally {
       isLoading.value = false
     }

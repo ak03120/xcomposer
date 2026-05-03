@@ -14,32 +14,29 @@ type XTweetResponse = {
   errors?: unknown
 }
 
-const fileToBase64 = async (file: File) => {
+const uploadImage = async (file: File, accessToken: string): Promise<string> => {
   const bytes = new Uint8Array(await file.arrayBuffer())
   let binary = ""
   for (let i = 0; i < bytes.length; i += 1) {
     binary += String.fromCharCode(bytes[i])
   }
-  return btoa(binary)
-}
 
-const uploadImage = async (file: File, accessToken: string) => {
-  const response = await fetch("https://api.x.com/2/media/upload", {
+  const res = await fetch("https://api.x.com/2/media/upload", {
     method: "POST",
     headers: {
       authorization: `Bearer ${accessToken}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      media: await fileToBase64(file),
-      media_category: "tweet_image",
+      media: btoa(binary),
       media_type: file.type || "image/png",
+      media_category: "tweet_image",
     }),
   })
-  const data = await response.json<XUploadResponse>()
+  const data = await res.json<XUploadResponse>()
 
-  if (!response.ok || !data.data?.id) {
-    throw new Error("画像アップロードに失敗しました。")
+  if (!res.ok || !data.data?.id) {
+    throw new Error(`画像アップロードに失敗しました。(${res.status}) ${JSON.stringify(data)}`)
   }
 
   return data.data.id

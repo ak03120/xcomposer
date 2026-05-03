@@ -1,6 +1,10 @@
-# AGENTS.md instructions for C:\Users\Owner\git\xcomposer
+# AGENTS.md
 
-## PowerShell で日本語を含むファイルを読む場合
+## TypeScriptのベストプラクティスに沿った開発をすること
 
-- `Get-Content` を使うときは、文字化けを避けるため `-Encoding utf8` を必ず明示すること。
-- 例: `Get-Content -LiteralPath src\pages\TweetPage.vue -Encoding utf8`
+- `Any` / `Unknown` 等は極力使わないこと。
+- 静的型付けを活用すること。
+
+## マイグレーション用のSQLファイルは少数にすること
+
+- むやみやたらに増やさない、既存ファイルを編集し活用すること。

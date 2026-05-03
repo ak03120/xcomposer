@@ -1,8 +1,8 @@
 DROP TABLE IF EXISTS "accounts";
-DROP TABLE IF EXISTS "user";
-DROP TABLE IF EXISTS "session";
-DROP TABLE IF EXISTS "account";
 DROP TABLE IF EXISTS "verification";
+DROP TABLE IF EXISTS "account";
+DROP TABLE IF EXISTS "session";
+DROP TABLE IF EXISTS "user";
 
 CREATE TABLE IF NOT EXISTS "user" (
   "id" TEXT NOT NULL PRIMARY KEY,
@@ -38,6 +38,16 @@ CREATE TABLE IF NOT EXISTS "account" (
   "accessTokenExpiresAt" TEXT,
   "refreshTokenExpiresAt" TEXT,
   "scope" TEXT,
+  "password" TEXT,
+  "createdAt" TEXT NOT NULL,
+  "updatedAt" TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS "verification" (
+  "id" TEXT NOT NULL PRIMARY KEY,
+  "identifier" TEXT NOT NULL,
+  "value" TEXT NOT NULL,
+  "expiresAt" TEXT NOT NULL,
   "createdAt" TEXT NOT NULL,
   "updatedAt" TEXT NOT NULL
 );

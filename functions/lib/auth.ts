@@ -7,8 +7,8 @@ type Env = {
   DB: D1Database
   BETTER_AUTH_SECRET?: string
   BETTER_AUTH_URL?: string
-  GOOGLE_CLIENT_ID?: string
-  GOOGLE_CLIENT_SECRET?: string
+  G_CLIENT_ID?: string
+  G_CLIENT_SECRET?: string
 }
 
 const defaultBaseUrl = "http://localhost:5173"
@@ -23,8 +23,8 @@ export const createAuth = (env: Env) => {
     database: kyselyAdapter(db, { type: "sqlite" }),
     socialProviders: {
       google: {
-        clientId: env.GOOGLE_CLIENT_ID || "",
-        clientSecret: env.GOOGLE_CLIENT_SECRET || "",
+        clientId: env.G_CLIENT_ID || "",
+        clientSecret: env.G_CLIENT_SECRET || "",
       },
     },
   })

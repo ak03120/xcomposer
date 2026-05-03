@@ -13,6 +13,7 @@ type SelectedImage = {
 }
 
 const maxTweetLength = 280
+const X_OAUTH_SCOPES = "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write media.write"
 const tweetText = ref("")
 const selectedImages = ref<SelectedImage[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -21,7 +22,7 @@ const hasTriedSubmit = ref(false)
 const statusMessage = ref("")
 const errorMessage = ref("")
 const accountStore = useAccountsStore()
-const { accounts, selectedAccount, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
+const { accounts, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const session = authClient.useSession()
 const isAuthResolved = computed(() => !session.value.isPending)
@@ -63,7 +64,6 @@ const loadAccounts = async () => {
 
   try {
     await accountStore.loadAccounts()
-    accountStore.clearSelectedAccount()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "アカウント一覧を取得できませんでした。"
   }
@@ -75,6 +75,7 @@ const handleAccountChange = (event: Event) => {
     hasTriedSubmit.value = false
   }
 }
+
 
 const handleTextInput = (event: Event) => {
   tweetText.value = (event.target as HTMLElement & { value?: string }).value || ""
@@ -132,7 +133,7 @@ const startXOAuth = async () => {
       response_type: "code",
       client_id: data.clientId || "",
       redirect_uri: data.redirectUri || "",
-      scope: "tweet.read tweet.write users.read offline.access",
+      scope: X_OAUTH_SCOPES,
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",
@@ -321,28 +322,17 @@ onBeforeUnmount(() => {
             v-for="account in accounts"
             :key="account.id"
             :value="account.id"
+            :display-text="account.username ? `${account.label} @${account.username}` : account.label"
           >
-            <div slot="headline" class="account-option">
-              <img
-                v-if="account.image"
-                class="account-option__avatar"
-                :src="account.image"
-                :alt="account.label"
-              />
-              <span>{{ account.label }}</span>
-            </div>
+            <img v-if="account.image" slot="start" class="account-option__avatar" :src="account.image" :alt="account.label" />
+            <div slot="headline">{{ account.label }}</div>
             <div v-if="account.username" slot="supporting-text">@{{ account.username }}</div>
           </md-select-option>
         </md-outlined-select>
 
-        <div class="stack-section">
-          <md-filled-tonal-button class="add-account-button" type="button" :disabled="isComposerDisabled" @click="startXOAuth">
-            Xアカウントを追加
-          </md-filled-tonal-button>
-          <span v-if="selectedAccount" class="selected-account">
-            {{ selectedAccount.label }}<span v-if="selectedAccount.username"> / @{{ selectedAccount.username }}</span>
-          </span>
-        </div>
+        <md-filled-tonal-button class="add-account-button" type="button" :disabled="isComposerDisabled" @click="startXOAuth">
+          Xアカウントを追加
+        </md-filled-tonal-button>
 
         <md-outlined-text-field
           class="tweet-input"
@@ -373,7 +363,7 @@ onBeforeUnmount(() => {
         <div v-if="selectedImages.length" class="image-grid">
           <figure v-for="image in selectedImages" :key="image.id" class="image-preview">
             <img :src="image.url" :alt="image.file.name" />
-            <md-filled-tonal-button type="button" @click="removeImage(image.id)">削除</md-filled-tonal-button>
+            <md-filled-tonal-button type="button" :disabled="isPosting" @click="removeImage(image.id)">削除</md-filled-tonal-button>
           </figure>
         </div>
 
@@ -461,6 +451,7 @@ md-outlined-text-field,
   align-items: center;
   gap: 8px;
 }
+
 
 .account-option__avatar {
   width: 20px;
