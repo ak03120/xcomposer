@@ -7,13 +7,23 @@ type XMeResponse = {
   }
 }
 
+class XApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = "XApiError"
+    this.status = status
+  }
+}
+
 export const getXMe = async (accessToken: string) => {
   const response = await fetch("https://api.x.com/2/users/me?user.fields=profile_image_url", {
     headers: { authorization: `Bearer ${accessToken}` },
   })
 
   if (!response.ok) {
-    throw new Error("X アカウント情報の取得に失敗しました。")
+    throw new XApiError("X アカウント情報の取得に失敗しました。", response.status)
   }
 
   const data = (await response.json()) as XMeResponse
@@ -103,7 +113,11 @@ export const withTokenRefresh = async <T>(
 ): Promise<T> => {
   try {
     return await fn(account.accessToken)
-  } catch {
+  } catch (error) {
+    if (!(error instanceof XApiError) || error.status !== 401) {
+      throw error
+    }
+
     if (!account.refreshToken) {
       throw new Error("アクセストークンが無効で、リフレッシュトークンもありません。")
     }
