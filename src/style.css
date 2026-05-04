@@ -23,7 +23,11 @@ body,
   --md-sys-color-on-surface-variant: #44474f;
   --md-sys-color-outline: #74777f;
   --md-sys-color-error: #ba1a1a;
+  --md-sys-typescale-body-medium-font: var(--app-font-sans);
+  --md-sys-typescale-body-small-font: var(--app-font-sans);
   --md-sys-typescale-body-large-font: var(--app-font-sans);
+  --md-sys-typescale-label-medium-font: var(--app-font-sans);
+  --md-sys-typescale-label-small-font: var(--app-font-sans);
   --md-sys-typescale-label-large-font: var(--app-font-sans);
   --md-sys-typescale-title-medium-font: var(--app-font-sans);
   --md-sys-typescale-title-large-font: var(--app-font-sans);
