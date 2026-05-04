@@ -5,25 +5,8 @@ body,
   margin: 0;
 }
 
-html {
-  font-family: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
-  color: #1a1c1e;
-  background: #fff;
-}
-
-body {
-  font-family: sans-serif;
-  min-width: 320px;
-  background: #fff;
-}
-
-button,
-input,
-textarea {
-  font: inherit;
-}
-
 :root {
+  --app-font-sans: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
   --md-sys-color-primary: #0b57d0;
   --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: #d3e3fd;
@@ -40,9 +23,28 @@ textarea {
   --md-sys-color-on-surface-variant: #44474f;
   --md-sys-color-outline: #74777f;
   --md-sys-color-error: #ba1a1a;
-  --md-sys-typescale-body-large-font: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
-  --md-sys-typescale-label-large-font: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
-  --md-sys-typescale-title-medium-font: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
+  --md-sys-typescale-body-large-font: var(--app-font-sans);
+  --md-sys-typescale-label-large-font: var(--app-font-sans);
+  --md-sys-typescale-title-medium-font: var(--app-font-sans);
+  --md-sys-typescale-title-large-font: var(--app-font-sans);
+}
+
+html {
+  font-family: var(--app-font-sans);
+  color: #1a1c1e;
+  background: #fff;
+}
+
+body {
+  font-family: var(--app-font-sans);
+  min-width: 320px;
+  background: #fff;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
 }
 
 :root[data-theme="dark"] {
