@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import Footer from "@/components/Footer.vue"
+import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
 import { authClient } from "@/lib/auth-client"
 import { useAccountsStore } from "@/stores/accounts"
@@ -44,6 +45,18 @@ const tweetSupportingText = computed(() => {
   return characterCountText.value
 })
 const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isPosting.value)
+
+const clearSelectedImages = () => {
+  selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
+  selectedImages.value = []
+}
+
+const resetComposerForm = () => {
+  tweetText.value = ""
+  hasTriedSubmit.value = false
+  errorMessage.value = ""
+  clearSelectedImages()
+}
 
 const loadAccounts = async () => {
   errorMessage.value = ""
@@ -209,9 +222,7 @@ const postTweet = async () => {
     }
 
     statusMessage.value = data.id ? `投稿しました: ${data.id}` : "投稿しました。"
-    tweetText.value = ""
-    selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
-    selectedImages.value = []
+    resetComposerForm()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "投稿に失敗しました。"
   } finally {
@@ -228,16 +239,13 @@ watch(
     }
 
     accountStore.clearAccounts()
-    selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
-    selectedImages.value = []
-    tweetText.value = ""
-    hasTriedSubmit.value = false
+    resetComposerForm()
   },
   { immediate: true },
 )
 
 onBeforeUnmount(() => {
-  selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
+  clearSelectedImages()
 })
 </script>
 
@@ -247,16 +255,7 @@ onBeforeUnmount(() => {
       <template #actions>
         <template v-if="isAuthResolved">
         <md-filled-tonal-button
-          v-if="!isSignedIn"
-          class="nav-auth-button"
-          type="button"
-          :disabled="isSigningInWithGoogle"
-          @click="signInWithGoogle"
-        >
-          Googleでログイン
-        </md-filled-tonal-button>
-        <md-filled-tonal-button
-          v-else
+          v-if="isSignedIn"
           id="google-account-button"
           class="google-account-button"
           type="button"
@@ -290,7 +289,13 @@ onBeforeUnmount(() => {
       </template>
     </NavBar>
 
-    <section class="compose-surface">
+    <LoginScreen
+      v-if="isAuthResolved && !isSignedIn"
+      :is-loading="isSigningInWithGoogle"
+      @login="signInWithGoogle"
+    />
+
+    <section v-else-if="isAuthResolved" class="compose-surface">
       <header class="page-header">
         <h1>ポストを作成</h1>
       </header>

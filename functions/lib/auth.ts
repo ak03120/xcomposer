@@ -21,6 +21,9 @@ export const createAuth = (env: Env) => {
     baseURL: env.BETTER_AUTH_URL || defaultBaseUrl,
     secret: env.BETTER_AUTH_SECRET || defaultSecret,
     database: kyselyAdapter(db, { type: "sqlite" }),
+    session: {
+      expiresIn: 3600 * 24 * 30,
+    },
     socialProviders: {
       google: {
         clientId: env.G_CLIENT_ID || "",
