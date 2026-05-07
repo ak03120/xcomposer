@@ -5,6 +5,7 @@ import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
 import { authClient } from "@/lib/auth-client"
+import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
 
 type SelectedImage = {
@@ -16,6 +17,7 @@ type SelectedImage = {
 const maxTweetLength = 280
 const X_OAUTH_SCOPES = "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write media.write"
 const tweetText = ref("")
+const discordWebhookUrl = ref("")
 const selectedImages = ref<SelectedImage[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const isPosting = ref(false)
@@ -26,16 +28,33 @@ const accountStore = useAccountsStore()
 const { accounts, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const session = authClient.useSession()
+const lastSignedInUserId = ref("")
 const isAuthResolved = computed(() => !session.value.isPending)
 const isSignedIn = computed(() => Boolean(session.value.data?.user))
 const isComposerDisabled = computed(() => !isSignedIn.value || isPosting.value)
+const signedInUserId = computed(() => session.value.data?.user?.id || "")
 
 const remainingCharacters = computed(() => maxTweetLength - tweetText.value.length)
 const characterCountText = computed(() => `${tweetText.value.length}/${maxTweetLength}`)
 const isAccountMissing = computed(() => !selectedAccountId.value)
 const isTweetMissing = computed(() => tweetText.value.trim().length === 0)
+const isDiscordWebhookInvalid = computed(() => {
+  const value = discordWebhookUrl.value.trim()
+
+  if (!value) {
+    return false
+  }
+
+  try {
+    const url = new URL(value)
+    return url.protocol !== "https:" && url.protocol !== "http:"
+  } catch {
+    return true
+  }
+})
 const shouldShowAccountError = computed(() => hasTriedSubmit.value && isAccountMissing.value)
 const shouldShowTweetError = computed(() => hasTriedSubmit.value && (isTweetMissing.value || remainingCharacters.value < 0))
+const shouldShowDiscordWebhookError = computed(() => discordWebhookUrl.value.trim().length > 0 && isDiscordWebhookInvalid.value)
 const accountSupportingText = computed(() => shouldShowAccountError.value ? "投稿アカウントは必須です" : "")
 const tweetSupportingText = computed(() => {
   if (shouldShowTweetError.value && isTweetMissing.value) {
@@ -44,7 +63,8 @@ const tweetSupportingText = computed(() => {
 
   return characterCountText.value
 })
-const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isPosting.value)
+const discordWebhookSupportingText = computed(() => shouldShowDiscordWebhookError.value ? "URL形式で入力してください。" : "")
+const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isDiscordWebhookInvalid.value && !isPosting.value)
 
 const clearSelectedImages = () => {
   selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
@@ -53,9 +73,52 @@ const clearSelectedImages = () => {
 
 const resetComposerForm = () => {
   tweetText.value = ""
+  discordWebhookUrl.value = ""
   hasTriedSubmit.value = false
   errorMessage.value = ""
   clearSelectedImages()
+}
+
+const resetComposerAfterPost = () => {
+  tweetText.value = ""
+  hasTriedSubmit.value = false
+  errorMessage.value = ""
+  clearSelectedImages()
+}
+
+const restoreComposerDraft = () => {
+  if (!signedInUserId.value) {
+    return
+  }
+
+  const draft = loadTweetDraft(signedInUserId.value)
+  if (!draft) {
+    return
+  }
+
+  tweetText.value = draft.tweetText
+  discordWebhookUrl.value = draft.discordWebhookUrl
+  selectedAccountId.value = draft.selectedAccountId
+}
+
+const persistComposerDraft = () => {
+  if (!signedInUserId.value) {
+    return
+  }
+
+  saveTweetDraft(signedInUserId.value, {
+    tweetText: tweetText.value,
+    discordWebhookUrl: discordWebhookUrl.value,
+    selectedAccountId: selectedAccountId.value,
+  })
+}
+
+const clearComposerDraft = (userId = signedInUserId.value) => {
+  if (!userId) {
+    return
+  }
+
+  clearTweetDraft(userId)
 }
 
 const loadAccounts = async () => {
@@ -79,6 +142,13 @@ const handleAccountChange = (event: Event) => {
 const handleTextInput = (event: Event) => {
   tweetText.value = (event.target as HTMLElement & { value?: string }).value || ""
   if (tweetText.value.trim().length > 0) {
+    hasTriedSubmit.value = false
+  }
+}
+
+const handleDiscordWebhookInput = (event: Event) => {
+  discordWebhookUrl.value = (event.target as HTMLElement & { value?: string }).value || ""
+  if (!isDiscordWebhookInvalid.value) {
     hasTriedSubmit.value = false
   }
 }
@@ -200,6 +270,8 @@ const postTweet = async () => {
       errorMessage.value = "投稿アカウントは必須です。"
     } else if (isTweetMissing.value) {
       errorMessage.value = "本文は必須です。"
+    } else if (isDiscordWebhookInvalid.value) {
+      errorMessage.value = "Discord ウェブフックはURL形式で入力してください。"
     }
     return
   }
@@ -212,6 +284,9 @@ const postTweet = async () => {
     const formData = new FormData()
     formData.append("accountId", selectedAccountId.value)
     formData.append("text", tweetText.value.trim())
+    if (discordWebhookUrl.value.trim()) {
+      formData.append("discordWebhookUrl", discordWebhookUrl.value.trim())
+    }
     selectedImages.value.forEach((image) => formData.append("images", image.file))
 
     const response = await fetch("/api/tweets", { method: "POST", body: formData })
@@ -222,7 +297,8 @@ const postTweet = async () => {
     }
 
     statusMessage.value = data.id ? `投稿しました: ${data.id}` : "投稿しました。"
-    resetComposerForm()
+    resetComposerAfterPost()
+    persistComposerDraft()
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "投稿に失敗しました。"
   } finally {
@@ -234,14 +310,27 @@ watch(
   isSignedIn,
   async (signedIn) => {
     if (signedIn) {
+      lastSignedInUserId.value = signedInUserId.value
       await loadAccounts()
+      restoreComposerDraft()
       return
     }
 
+    clearComposerDraft(lastSignedInUserId.value)
+    lastSignedInUserId.value = ""
     accountStore.clearAccounts()
     resetComposerForm()
   },
   { immediate: true },
+)
+
+watch(
+  [tweetText, discordWebhookUrl, selectedAccountId],
+  () => {
+    if (isSignedIn.value) {
+      persistComposerDraft()
+    }
+  },
 )
 
 onBeforeUnmount(() => {
@@ -361,6 +450,19 @@ onBeforeUnmount(() => {
           </figure>
         </div>
 
+        <hr class="compose-divider" />
+
+        <md-outlined-text-field
+          class="discord-webhook-input"
+          type="url"
+          label="Discord ウェブフック"
+          :value="discordWebhookUrl"
+          :disabled="isComposerDisabled"
+          :error="shouldShowDiscordWebhookError"
+          :supporting-text="discordWebhookSupportingText"
+          @input="handleDiscordWebhookInput"
+        ></md-outlined-text-field>
+
         <div v-if="errorMessage" class="message message-error">{{ errorMessage }}</div>
         <div v-if="statusMessage" class="message message-success">{{ statusMessage }}</div>
 
@@ -419,6 +521,13 @@ h1 {
 .stack-section {
   align-items: flex-start;
   gap: 12px;
+}
+
+.compose-divider {
+  width: 100%;
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
 }
 
 md-outlined-select,

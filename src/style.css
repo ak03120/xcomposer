@@ -68,6 +68,10 @@ textarea {
   --md-sys-color-on-surface-variant: #c4c7c5;
   --md-sys-color-outline: #8e918f;
   --md-sys-color-error: #ffb4ab;
+  --md-outlined-text-field-error-hover-input-text-color: var(--md-sys-color-on-surface);
+  --md-outlined-text-field-error-hover-label-text-color: var(--md-sys-color-error);
+  --md-outlined-text-field-error-hover-outline-color: var(--md-sys-color-error);
+  --md-outlined-text-field-error-hover-supporting-text-color: var(--md-sys-color-error);
 }
 
 html[data-theme="dark"] {

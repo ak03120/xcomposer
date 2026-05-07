@@ -1,7 +1,7 @@
 import type { Env } from "../lib/env"
 import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
-import { withTokenRefresh } from "../lib/x"
+import { getXMe, withTokenRefresh } from "../lib/x"
 import type { XAccount } from "../lib/x"
 
 type XUploadResponse = {
@@ -12,6 +12,11 @@ type XUploadResponse = {
 type XTweetResponse = {
   data?: { id?: string; text?: string }
   errors?: unknown
+}
+
+type XProfile = {
+  name: string
+  profile_image_url?: string
 }
 
 const uploadImage = async (file: File, accessToken: string): Promise<string> => {
@@ -42,7 +47,7 @@ const uploadImage = async (file: File, accessToken: string): Promise<string> => 
   return data.data.id
 }
 
-const createTweet = async (text: string, mediaIds: string[], accessToken: string) => {
+const createTweet = async (text: string, mediaIds: string[], accessToken: string): Promise<{ id: string; text?: string }> => {
   const response = await fetch("https://api.x.com/2/tweets", {
     method: "POST",
     headers: {
@@ -60,7 +65,34 @@ const createTweet = async (text: string, mediaIds: string[], accessToken: string
     throw new Error("X への投稿に失敗しました。")
   }
 
-  return data.data
+  return { id: data.data.id, text: data.data.text }
+}
+
+const isHttpUrl = (value: string) => {
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" || url.protocol === "http:"
+  } catch {
+    return false
+  }
+}
+
+const notifyDiscordWebhook = async (webhookUrl: string, tweetId: string, profile: XProfile) => {
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      content: `https://x.com/i/status/${tweetId}`,
+      username: profile.name,
+      ...(profile.profile_image_url ? { avatar_url: profile.profile_image_url } : {}),
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("Discord ウェブフックへの通知に失敗しました。")
+  }
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -74,6 +106,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const formData = await request.formData()
   const accountId = formData.get("accountId")
   const text = formData.get("text")
+  const discordWebhookUrl = formData.get("discordWebhookUrl")
   const images = formData.getAll("images").filter((v): v is File => v instanceof File)
 
   if (typeof accountId !== "string" || !accountId) {
@@ -90,6 +123,10 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   if (images.length > 4) {
     return json({ error: "画像は最大 4 枚までです。" }, { status: 400 })
+  }
+
+  if (discordWebhookUrl !== null && (typeof discordWebhookUrl !== "string" || !isHttpUrl(discordWebhookUrl))) {
+    return json({ error: "Discord ウェブフックはURL形式で入力してください。" }, { status: 400 })
   }
 
   const tokenIndex = parseInt(accountId, 10)
@@ -123,10 +160,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   try {
-    const tweet = await withTokenRefresh(env.DB, account, env.X_CLIENT_ID || "", env.X_CLIENT_SECRET || "", async (token) => {
+    const { tweet, profile } = await withTokenRefresh(env.DB, account, env.X_CLIENT_ID || "", env.X_CLIENT_SECRET || "", async (token) => {
       const mediaIds = await Promise.all(images.map((image) => uploadImage(image, token)))
-      return createTweet(text.trim(), mediaIds, token)
+      const [tweet, profile] = await Promise.all([
+        createTweet(text.trim(), mediaIds, token),
+        getXMe(token),
+      ])
+
+      return { tweet, profile }
     })
+
+    if (typeof discordWebhookUrl === "string" && discordWebhookUrl) {
+      await notifyDiscordWebhook(discordWebhookUrl, tweet.id, profile)
+    }
 
     return json({ id: tweet.id, text: tweet.text })
   } catch (error) {
