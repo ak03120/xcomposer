@@ -470,7 +470,7 @@ onBeforeUnmount(() => {
             :value="webhook.id"
             :display-text="webhook.url"
           >
-            <div slot="headline">{{ webhook.url }}</div>
+            <div slot="headline" class="discord-webhook-option__headline">{{ webhook.url }}</div>
           </md-select-option>
         </md-outlined-select>
 
@@ -579,6 +579,17 @@ md-outlined-text-field,
   border-radius: 999px;
   object-fit: cover;
   flex: 0 0 auto;
+}
+
+.discord-webhook-select {
+  --md-outlined-select-text-field-input-text-white-space: normal;
+}
+
+.discord-webhook-option__headline {
+  max-width: 100%;
+  white-space: normal;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .media-action {

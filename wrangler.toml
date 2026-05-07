@@ -1,4 +1,5 @@
 name = "xcomposer"
+account_id = "45f828eb321dc11b0d742e1e592b9d4c"
 compatibility_date = "2026-05-03"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "dist"
