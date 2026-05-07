@@ -17,7 +17,11 @@ const isHttpUrl = (value: string) => {
   }
 }
 
-const parseDiscordWebhooks = (value: string) => {
+const parseDiscordWebhooks = (value: string | null | undefined) => {
+  if (!value) {
+    return []
+  }
+
   const parsedValue = JSON.parse(value) as unknown
   if (!Array.isArray(parsedValue)) {
     return []
@@ -37,7 +41,7 @@ const getUserWebhooks = async (db: D1Database, userId: string) => {
   const row = await db
     .prepare(`SELECT "dWebhooks" FROM "user" WHERE "id" = ?1`)
     .bind(userId)
-    .first<{ dWebhooks: string }>()
+    .first<{ dWebhooks?: string | null }>()
 
   return row ? parseDiscordWebhooks(row.dWebhooks) : []
 }

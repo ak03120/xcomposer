@@ -69,7 +69,11 @@ const createTweet = async (text: string, mediaIds: string[], accessToken: string
   return { id: data.data.id, text: data.data.text }
 }
 
-const parseDiscordWebhooks = (value: string) => {
+const parseDiscordWebhooks = (value: string | null | undefined) => {
+  if (!value) {
+    return []
+  }
+
   const parsedValue = JSON.parse(value) as unknown
   if (!Array.isArray(parsedValue)) {
     return []
