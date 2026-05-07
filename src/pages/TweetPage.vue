@@ -32,6 +32,7 @@ const { accounts, selectedAccountId, isLoading: isLoadingAccounts } = storeToRef
 const { webhooks: discordWebhooks, selectedWebhookId: selectedDiscordWebhookId, isLoading: isLoadingDiscordWebhooks } = storeToRefs(discordWebhooksStore)
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const discordWebhookDialog = ref<InstanceType<typeof AddDiscordWebhookDialog> | null>(null)
+const discordWebhookSelect = ref<HTMLElement | null>(null)
 const session = authClient.useSession()
 const lastSignedInUserId = ref("")
 const isAuthResolved = computed(() => !session.value.isPending)
@@ -140,6 +141,27 @@ const handleTextInput = (event: Event) => {
 
 const handleDiscordWebhookChange = (event: Event) => {
   selectedDiscordWebhookId.value = (event.target as HTMLElement & { value?: string }).value || ""
+}
+
+const getDiscordWebhookLabel = (url: string) => {
+  const normalizedUrl = url.replace(/^https?:\/\//, "")
+  const segments = normalizedUrl.split("/")
+  if (segments.length < 5) {
+    return normalizedUrl
+  }
+
+  const host = segments[0]
+  const path = segments[1]
+  const resource = segments[2]
+  const webhookId = segments[3]
+  const token = segments.slice(4).join("/")
+
+  if (!token) {
+    return normalizedUrl
+  }
+
+  const shortToken = `${token.slice(0, 4)}...`
+  return `${host}/${path}/${resource}/${webhookId}/${shortToken}`
 }
 
 const openDiscordWebhookDialog = () => {
@@ -340,6 +362,7 @@ watch(
 onBeforeUnmount(() => {
   clearSelectedImages()
 })
+
 </script>
 
 <template>
@@ -457,6 +480,7 @@ onBeforeUnmount(() => {
         <hr class="compose-divider" />
 
         <md-outlined-select
+          ref="discordWebhookSelect"
           class="discord-webhook-select"
           label="Discord ウェブフック"
           :value="selectedDiscordWebhookId"
@@ -468,9 +492,9 @@ onBeforeUnmount(() => {
             v-for="webhook in discordWebhooks"
             :key="webhook.id"
             :value="webhook.id"
-            :display-text="webhook.url"
+            :display-text="getDiscordWebhookLabel(webhook.url)"
           >
-            <div slot="headline" class="discord-webhook-option__headline">{{ webhook.url }}</div>
+            <div slot="headline" class="discord-webhook-option__headline">{{ getDiscordWebhookLabel(webhook.url) }}</div>
           </md-select-option>
         </md-outlined-select>
 
@@ -582,14 +606,14 @@ md-outlined-text-field,
 }
 
 .discord-webhook-select {
-  --md-outlined-select-text-field-input-text-white-space: normal;
 }
 
 .discord-webhook-option__headline {
   max-width: 100%;
-  white-space: normal;
-  word-break: break-all;
+  min-width: 0;
   overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .media-action {
