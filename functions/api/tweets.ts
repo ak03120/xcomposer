@@ -162,17 +162,15 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   try {
-    const { tweet, profile } = await withTokenRefresh(env.DB, account, env.X_CLIENT_ID || "", env.X_CLIENT_SECRET || "", async (token) => {
+    const clientId = env.X_CLIENT_ID || ""
+    const clientSecret = env.X_CLIENT_SECRET || ""
+    const tweet = await withTokenRefresh(env.DB, account, clientId, clientSecret, async (token) => {
       const mediaIds = await Promise.all(images.map((image) => uploadImage(image, token)))
-      const [tweet, profile] = await Promise.all([
-        createTweet(text.trim(), mediaIds, token),
-        getXMe(token),
-      ])
-
-      return { tweet, profile }
+      return createTweet(text.trim(), mediaIds, token)
     })
 
     if (typeof discordWebhookUrl === "string" && discordWebhookUrl) {
+      const profile = await withTokenRefresh(env.DB, account, clientId, clientSecret, getXMe)
       await notifyDiscordWebhook(discordWebhookUrl, tweet.id, profile)
     }
 
