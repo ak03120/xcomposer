@@ -412,7 +412,6 @@ onBeforeUnmount(() => {
           required
           :value="selectedAccountId"
           :disabled="!isSignedIn || isLoadingAccounts || isPosting"
-          :data-empty="!accounts.length"
           :error="shouldShowAccountError"
           :supporting-text="accountSupportingText"
           @change="handleAccountChange"
@@ -474,9 +473,11 @@ onBeforeUnmount(() => {
           label="Discord ウェブフック"
           :value="selectedDiscordWebhookId"
           :disabled="isComposerDisabled || isLoadingDiscordWebhooks"
-          :data-empty="!discordWebhooks.length"
           @change="handleDiscordWebhookChange"
         >
+          <md-select-option value="" display-text="送信しない">
+            <div slot="headline">送信しない</div>
+          </md-select-option>
           <md-select-option
             v-for="webhook in discordWebhooks"
             :key="webhook.id"
@@ -564,13 +565,6 @@ md-outlined-select,
 md-outlined-text-field,
 .post-button {
   width: 100%;
-}
-
-.account-select[data-empty="true"] {
-  --md-outlined-select-input-text-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 62%, transparent);
-  --md-outlined-select-label-text-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 62%, transparent);
-  --md-outlined-select-outline-color: color-mix(in srgb, var(--md-sys-color-outline) 48%, transparent);
-  --md-outlined-select-trailing-icon-color: color-mix(in srgb, var(--md-sys-color-on-surface-variant) 48%, transparent);
 }
 
 .selected-account,
