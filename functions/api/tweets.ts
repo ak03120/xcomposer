@@ -91,7 +91,8 @@ const notifyDiscordWebhook = async (webhookUrl: string, tweetId: string, profile
   })
 
   if (!response.ok) {
-    throw new Error("Discord ウェブフックへの通知に失敗しました。")
+    const errorText = await response.text()
+    throw new Error(`Discord ウェブフックへの通知に失敗しました。(${response.status}) ${errorText}`)
   }
 }
 
