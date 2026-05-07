@@ -16,6 +16,7 @@ type XTweetResponse = {
 
 type XProfile = {
   name: string
+  username: string
   profile_image_url?: string
 }
 
@@ -85,7 +86,7 @@ const notifyDiscordWebhook = async (webhookUrl: string, tweetId: string, profile
     },
     body: JSON.stringify({
       content: `https://x.com/i/status/${tweetId}`,
-      username: profile.name,
+      username: `${profile.name} (@${profile.username})`,
       ...(profile.profile_image_url ? { avatar_url: profile.profile_image_url } : {}),
     }),
   })
