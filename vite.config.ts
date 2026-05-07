@@ -39,11 +39,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,woff2}"],
-        navigateFallback: "index.html",
+        navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            urlPattern: /\/api\//,
             handler: "NetworkOnly",
           },
         ],
