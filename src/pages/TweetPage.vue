@@ -144,24 +144,13 @@ const handleDiscordWebhookChange = (event: Event) => {
 }
 
 const getDiscordWebhookLabel = (url: string) => {
-  const normalizedUrl = url.replace(/^https?:\/\//, "")
-  const segments = normalizedUrl.split("/")
-  if (segments.length < 5) {
-    return normalizedUrl
+  const match = url.match(/^https?:\/\/discord\.com\/api\/webhooks\/([^/]+)\/(.+)$/)
+  if (!match) {
+    return url.replace(/^https?:\/\//, "")
   }
 
-  const host = segments[0]
-  const path = segments[1]
-  const resource = segments[2]
-  const webhookId = segments[3]
-  const token = segments.slice(4).join("/")
-
-  if (!token) {
-    return normalizedUrl
-  }
-
-  const shortToken = `${token.slice(0, 4)}...`
-  return `${host}/${path}/${resource}/${webhookId}/${shortToken}`
+  const [, webhookId, token] = match
+  return `${webhookId}/${token.slice(0, 4)}...`
 }
 
 const openDiscordWebhookDialog = () => {
