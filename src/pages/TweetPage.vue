@@ -25,6 +25,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const isPosting = ref(false)
 const hasTriedSubmit = ref(false)
 const statusMessage = ref("")
+const postedTweetUrl = ref("")
 const errorMessage = ref("")
 const accountStore = useAccountsStore()
 const discordWebhooksStore = useDiscordWebhooksStore()
@@ -65,6 +66,7 @@ const resetComposerForm = () => {
   tweetText.value = ""
   selectedDiscordWebhookId.value = ""
   hasTriedSubmit.value = false
+  postedTweetUrl.value = ""
   errorMessage.value = ""
   clearSelectedImages()
 }
@@ -159,6 +161,7 @@ const openDiscordWebhookDialog = () => {
 
 const addDiscordWebhook = async (url: string) => {
   statusMessage.value = ""
+  postedTweetUrl.value = ""
   errorMessage.value = ""
 
   try {
@@ -197,6 +200,7 @@ const startXOAuth = async () => {
   }
 
   statusMessage.value = ""
+  postedTweetUrl.value = ""
   errorMessage.value = ""
 
   try {
@@ -292,6 +296,7 @@ const postTweet = async () => {
 
   isPosting.value = true
   statusMessage.value = ""
+  postedTweetUrl.value = ""
   errorMessage.value = ""
 
   try {
@@ -310,7 +315,8 @@ const postTweet = async () => {
       throw new Error(data.error || "投稿に失敗しました。")
     }
 
-    statusMessage.value = data.id ? `投稿しました: ${data.id}` : "投稿しました。"
+    statusMessage.value = "投稿しました。"
+    postedTweetUrl.value = data.id ? `https://x.com/i/status/${data.id}` : ""
     resetComposerAfterPost()
     persistComposerDraft()
   } catch (error) {
@@ -493,7 +499,12 @@ onBeforeUnmount(() => {
         </md-filled-tonal-button>
 
         <div v-if="errorMessage" class="message message-error">{{ errorMessage }}</div>
-        <div v-if="statusMessage" class="message message-success">{{ statusMessage }}</div>
+        <div v-if="statusMessage" class="message message-success">
+          <span>{{ statusMessage }}</span>
+          <md-filled-tonal-button v-if="postedTweetUrl" :href="postedTweetUrl" target="_blank" rel="noopener">
+            ツイートを表示
+          </md-filled-tonal-button>
+        </div>
 
         <md-filled-button class="post-button" type="submit" :disabled="!isSignedIn || !canPost">
           <md-circular-progress v-if="isPosting" slot="icon" indeterminate></md-circular-progress>
@@ -663,10 +674,18 @@ md-outlined-text-field,
 }
 
 .message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px;
   border-radius: 16px;
   font-size: 0.875rem;
   line-height: 1.6;
+}
+
+.message span {
+  min-width: 0;
 }
 
 .message-error {
