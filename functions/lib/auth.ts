@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth"
 import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { Kysely } from "kysely"
 import { D1Dialect } from "kysely-d1"
+import { ulid } from "ulidx"
 
 type Env = {
   DB: D1Database
@@ -12,7 +13,7 @@ type Env = {
 }
 
 const defaultBaseUrl = "http://localhost:5173"
-const defaultSecret = "xcomposer-dev-secret-please-change-me"
+const defaultSecret = "11618423-d4c7-41c8-b4a1-c45d0ab4badf"
 
 export const createAuth = (env: Env) => {
   const db = new Kysely({ dialect: new D1Dialect({ database: env.DB }) })
@@ -23,6 +24,11 @@ export const createAuth = (env: Env) => {
     database: kyselyAdapter(db, { type: "sqlite" }),
     session: {
       expiresIn: 3600 * 24 * 30,
+    },
+    advanced: {
+      database: {
+        generateId: () => ulid(),
+      },
     },
     socialProviders: {
       google: {

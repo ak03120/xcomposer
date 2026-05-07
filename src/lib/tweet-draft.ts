@@ -1,7 +1,7 @@
 export type TweetDraft = {
   tweetText: string
-  discordWebhookUrl: string
   selectedAccountId: string
+  selectedDiscordWebhookId: string
 }
 
 const DRAFT_STORAGE_KEY_PREFIX = "xcomposer:tweet-draft:v1"
@@ -13,7 +13,6 @@ const isTweetDraft = (value: unknown): value is TweetDraft => {
 
   const draft = value as Record<string, unknown>
   return typeof draft.tweetText === "string"
-    && typeof draft.discordWebhookUrl === "string"
     && typeof draft.selectedAccountId === "string"
 }
 
@@ -28,7 +27,15 @@ export const loadTweetDraft = (userId: string): TweetDraft | null => {
 
   try {
     const parsedValue = JSON.parse(storedValue)
-    return isTweetDraft(parsedValue) ? parsedValue : null
+    if (!isTweetDraft(parsedValue)) {
+      return null
+    }
+
+    return {
+      tweetText: parsedValue.tweetText,
+      selectedAccountId: parsedValue.selectedAccountId,
+      selectedDiscordWebhookId: parsedValue.selectedDiscordWebhookId || "",
+    }
   } catch {
     return null
   }

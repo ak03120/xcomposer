@@ -69,13 +69,20 @@ const createTweet = async (text: string, mediaIds: string[], accessToken: string
   return { id: data.data.id, text: data.data.text }
 }
 
-const isHttpUrl = (value: string) => {
-  try {
-    const url = new URL(value)
-    return url.protocol === "https:" || url.protocol === "http:"
-  } catch {
-    return false
+const parseDiscordWebhooks = (value: string) => {
+  const parsedValue = JSON.parse(value) as unknown
+  if (!Array.isArray(parsedValue)) {
+    return []
   }
+
+  return parsedValue.filter((item): item is { id: string; url: string } => {
+    if (!item || typeof item !== "object") {
+      return false
+    }
+
+    const webhook = item as Record<string, unknown>
+    return typeof webhook.id === "string" && typeof webhook.url === "string"
+  })
 }
 
 const notifyDiscordWebhook = async (webhookUrl: string, tweetId: string, profile: XProfile) => {
@@ -108,7 +115,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const formData = await request.formData()
   const accountId = formData.get("accountId")
   const text = formData.get("text")
-  const discordWebhookUrl = formData.get("discordWebhookUrl")
+  const discordWebhookId = formData.get("discordWebhookId")
   const images = formData.getAll("images").filter((v): v is File => v instanceof File)
 
   if (typeof accountId !== "string" || !accountId) {
@@ -127,8 +134,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "画像は最大 4 枚までです。" }, { status: 400 })
   }
 
-  if (discordWebhookUrl !== null && (typeof discordWebhookUrl !== "string" || !isHttpUrl(discordWebhookUrl))) {
-    return json({ error: "Discord ウェブフックはURL形式で入力してください。" }, { status: 400 })
+  if (discordWebhookId !== null && typeof discordWebhookId !== "string") {
+    return json({ error: "Discord ウェブフックが不正です。" }, { status: 400 })
   }
 
   const tokenIndex = parseInt(accountId, 10)
@@ -138,9 +145,9 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   const row = await env.DB
-    .prepare(`SELECT "xAccessTokens", "xRefreshTokens" FROM "user" WHERE "id" = ?1`)
+    .prepare(`SELECT "xAccessTokens", "xRefreshTokens", "dWebhooks" FROM "user" WHERE "id" = ?1`)
     .bind(session.user.id)
-    .first<{ xAccessTokens: string; xRefreshTokens: string }>()
+    .first<{ xAccessTokens: string; xRefreshTokens: string; dWebhooks?: string }>()
 
   if (!row) {
     return json({ error: "ユーザーが見つかりません。" }, { status: 404 })
@@ -149,9 +156,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const accessTokens = JSON.parse(row.xAccessTokens) as string[]
   const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
   const accessToken = accessTokens[tokenIndex]
+  const discordWebhookUrl = typeof discordWebhookId === "string" && discordWebhookId
+    ? parseDiscordWebhooks(row.dWebhooks || "[]").find((webhook) => webhook.id === discordWebhookId)?.url
+    : undefined
 
   if (!accessToken) {
     return json({ error: "指定されたアカウントが見つかりません。" }, { status: 404 })
+  }
+
+  if (typeof discordWebhookId === "string" && discordWebhookId && !discordWebhookUrl) {
+    return json({ error: "指定されたDiscord ウェブフックが見つかりません。" }, { status: 404 })
   }
 
   const account: XAccount = {
@@ -169,7 +183,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       return createTweet(text.trim(), mediaIds, token)
     })
 
-    if (typeof discordWebhookUrl === "string" && discordWebhookUrl) {
+    if (discordWebhookUrl) {
       const profile = await withTokenRefresh(env.DB, account, clientId, clientSecret, getXMe)
       await notifyDiscordWebhook(discordWebhookUrl, tweet.id, profile)
     }

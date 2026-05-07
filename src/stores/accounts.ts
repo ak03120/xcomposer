@@ -34,7 +34,10 @@ export const useAccountsStore = defineStore("accounts", () => {
       }
 
       accounts.value = data.accounts || []
-      if (accounts.value.length) {
+      if (selectedAccountId.value && !accounts.value.some((account) => account.id === selectedAccountId.value)) {
+        selectedAccountId.value = ""
+      }
+      if (!selectedAccountId.value && accounts.value.length) {
         selectedAccountId.value = accounts.value[0].id
       }
     } finally {

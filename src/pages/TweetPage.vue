@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
+import { ulid } from "ulidx"
+import AddDiscordWebhookDialog from "@/components/AddDiscordWebhookDialog.vue"
 import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
 import { authClient } from "@/lib/auth-client"
 import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
+import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
 
 type SelectedImage = {
   id: string
@@ -17,7 +20,6 @@ type SelectedImage = {
 const maxTweetLength = 280
 const X_OAUTH_SCOPES = "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write media.write"
 const tweetText = ref("")
-const discordWebhookUrl = ref("")
 const selectedImages = ref<SelectedImage[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const isPosting = ref(false)
@@ -25,8 +27,11 @@ const hasTriedSubmit = ref(false)
 const statusMessage = ref("")
 const errorMessage = ref("")
 const accountStore = useAccountsStore()
+const discordWebhooksStore = useDiscordWebhooksStore()
 const { accounts, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
+const { webhooks: discordWebhooks, selectedWebhookId: selectedDiscordWebhookId, isLoading: isLoadingDiscordWebhooks } = storeToRefs(discordWebhooksStore)
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
+const discordWebhookDialog = ref<InstanceType<typeof AddDiscordWebhookDialog> | null>(null)
 const session = authClient.useSession()
 const lastSignedInUserId = ref("")
 const isAuthResolved = computed(() => !session.value.isPending)
@@ -38,23 +43,8 @@ const remainingCharacters = computed(() => maxTweetLength - tweetText.value.leng
 const characterCountText = computed(() => `${tweetText.value.length}/${maxTweetLength}`)
 const isAccountMissing = computed(() => !selectedAccountId.value)
 const isTweetMissing = computed(() => tweetText.value.trim().length === 0)
-const isDiscordWebhookInvalid = computed(() => {
-  const value = discordWebhookUrl.value.trim()
-
-  if (!value) {
-    return false
-  }
-
-  try {
-    const url = new URL(value)
-    return url.protocol !== "https:" && url.protocol !== "http:"
-  } catch {
-    return true
-  }
-})
 const shouldShowAccountError = computed(() => hasTriedSubmit.value && isAccountMissing.value)
 const shouldShowTweetError = computed(() => hasTriedSubmit.value && (isTweetMissing.value || remainingCharacters.value < 0))
-const shouldShowDiscordWebhookError = computed(() => discordWebhookUrl.value.trim().length > 0 && isDiscordWebhookInvalid.value)
 const accountSupportingText = computed(() => shouldShowAccountError.value ? "投稿アカウントは必須です" : "")
 const tweetSupportingText = computed(() => {
   if (shouldShowTweetError.value && isTweetMissing.value) {
@@ -63,8 +53,7 @@ const tweetSupportingText = computed(() => {
 
   return characterCountText.value
 })
-const discordWebhookSupportingText = computed(() => shouldShowDiscordWebhookError.value ? "URL形式で入力してください。" : "")
-const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isDiscordWebhookInvalid.value && !isPosting.value)
+const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isPosting.value)
 
 const clearSelectedImages = () => {
   selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
@@ -73,7 +62,7 @@ const clearSelectedImages = () => {
 
 const resetComposerForm = () => {
   tweetText.value = ""
-  discordWebhookUrl.value = ""
+  selectedDiscordWebhookId.value = ""
   hasTriedSubmit.value = false
   errorMessage.value = ""
   clearSelectedImages()
@@ -97,8 +86,8 @@ const restoreComposerDraft = () => {
   }
 
   tweetText.value = draft.tweetText
-  discordWebhookUrl.value = draft.discordWebhookUrl
   selectedAccountId.value = draft.selectedAccountId
+  selectedDiscordWebhookId.value = draft.selectedDiscordWebhookId
 }
 
 const persistComposerDraft = () => {
@@ -108,8 +97,8 @@ const persistComposerDraft = () => {
 
   saveTweetDraft(signedInUserId.value, {
     tweetText: tweetText.value,
-    discordWebhookUrl: discordWebhookUrl.value,
     selectedAccountId: selectedAccountId.value,
+    selectedDiscordWebhookId: selectedDiscordWebhookId.value,
   })
 }
 
@@ -125,9 +114,12 @@ const loadAccounts = async () => {
   errorMessage.value = ""
 
   try {
-    await accountStore.loadAccounts()
+    await Promise.all([
+      accountStore.loadAccounts(),
+      discordWebhooksStore.loadWebhooks(),
+    ])
   } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "アカウント一覧を取得できませんでした。"
+    errorMessage.value = error instanceof Error ? error.message : "フォーム情報を取得できませんでした。"
   }
 }
 
@@ -146,10 +138,23 @@ const handleTextInput = (event: Event) => {
   }
 }
 
-const handleDiscordWebhookInput = (event: Event) => {
-  discordWebhookUrl.value = (event.target as HTMLElement & { value?: string }).value || ""
-  if (!isDiscordWebhookInvalid.value) {
-    hasTriedSubmit.value = false
+const handleDiscordWebhookChange = (event: Event) => {
+  selectedDiscordWebhookId.value = (event.target as HTMLElement & { value?: string }).value || ""
+}
+
+const openDiscordWebhookDialog = () => {
+  discordWebhookDialog.value?.open()
+}
+
+const addDiscordWebhook = async (url: string) => {
+  statusMessage.value = ""
+  errorMessage.value = ""
+
+  try {
+    await discordWebhooksStore.addWebhook(url)
+    statusMessage.value = "Discord ウェブフックを保存しました。"
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : "Discord ウェブフックを保存できませんでした。"
   }
 }
 
@@ -193,7 +198,7 @@ const startXOAuth = async () => {
 
     const codeVerifier = generateCodeVerifier()
     const codeChallenge = await generateCodeChallenge(codeVerifier)
-    const state = crypto.randomUUID()
+    const state = ulid()
 
     sessionStorage.setItem("x_oauth_code_verifier", codeVerifier)
     sessionStorage.setItem("x_oauth_state", state)
@@ -244,7 +249,7 @@ const handleFileSelection = (event: Event) => {
   const files = Array.from(input.files || []).filter((file) => file.type.startsWith("image/"))
   const slots = Math.max(0, 4 - selectedImages.value.length)
   const images = files.slice(0, slots).map((file) => ({
-    id: crypto.randomUUID(),
+    id: ulid(),
     file,
     url: URL.createObjectURL(file),
   }))
@@ -270,8 +275,6 @@ const postTweet = async () => {
       errorMessage.value = "投稿アカウントは必須です。"
     } else if (isTweetMissing.value) {
       errorMessage.value = "本文は必須です。"
-    } else if (isDiscordWebhookInvalid.value) {
-      errorMessage.value = "Discord ウェブフックはURL形式で入力してください。"
     }
     return
   }
@@ -284,8 +287,8 @@ const postTweet = async () => {
     const formData = new FormData()
     formData.append("accountId", selectedAccountId.value)
     formData.append("text", tweetText.value.trim())
-    if (discordWebhookUrl.value.trim()) {
-      formData.append("discordWebhookUrl", discordWebhookUrl.value.trim())
+    if (selectedDiscordWebhookId.value) {
+      formData.append("discordWebhookId", selectedDiscordWebhookId.value)
     }
     selectedImages.value.forEach((image) => formData.append("images", image.file))
 
@@ -311,21 +314,22 @@ watch(
   async (signedIn) => {
     if (signedIn) {
       lastSignedInUserId.value = signedInUserId.value
-      await loadAccounts()
       restoreComposerDraft()
+      await loadAccounts()
       return
     }
 
     clearComposerDraft(lastSignedInUserId.value)
     lastSignedInUserId.value = ""
     accountStore.clearAccounts()
+    discordWebhooksStore.clearWebhooks()
     resetComposerForm()
   },
   { immediate: true },
 )
 
 watch(
-  [tweetText, discordWebhookUrl, selectedAccountId],
+  [tweetText, selectedAccountId, selectedDiscordWebhookId],
   () => {
     if (isSignedIn.value) {
       persistComposerDraft()
@@ -452,16 +456,27 @@ onBeforeUnmount(() => {
 
         <hr class="compose-divider" />
 
-        <md-outlined-text-field
-          class="discord-webhook-input"
-          type="url"
+        <md-outlined-select
+          class="discord-webhook-select"
           label="Discord ウェブフック"
-          :value="discordWebhookUrl"
-          :disabled="isComposerDisabled"
-          :error="shouldShowDiscordWebhookError"
-          :supporting-text="discordWebhookSupportingText"
-          @input="handleDiscordWebhookInput"
-        ></md-outlined-text-field>
+          :value="selectedDiscordWebhookId"
+          :disabled="isComposerDisabled || isLoadingDiscordWebhooks"
+          :data-empty="!discordWebhooks.length"
+          @change="handleDiscordWebhookChange"
+        >
+          <md-select-option
+            v-for="webhook in discordWebhooks"
+            :key="webhook.id"
+            :value="webhook.id"
+            :display-text="webhook.url"
+          >
+            <div slot="headline">{{ webhook.url }}</div>
+          </md-select-option>
+        </md-outlined-select>
+
+        <md-filled-tonal-button class="add-discord-webhook-button" type="button" :disabled="isComposerDisabled" @click="openDiscordWebhookDialog">
+          Discord ウェブフックを追加
+        </md-filled-tonal-button>
 
         <div v-if="errorMessage" class="message message-error">{{ errorMessage }}</div>
         <div v-if="statusMessage" class="message message-success">{{ statusMessage }}</div>
@@ -474,6 +489,8 @@ onBeforeUnmount(() => {
     </section>
 
     <Footer />
+
+    <AddDiscordWebhookDialog ref="discordWebhookDialog" @add="addDiscordWebhook" />
   </main>
 </template>
 

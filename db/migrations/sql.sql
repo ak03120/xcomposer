@@ -7,13 +7,14 @@ DROP TABLE IF EXISTS "user";
 CREATE TABLE IF NOT EXISTS "user" (
   "id" TEXT NOT NULL PRIMARY KEY,
   "name" TEXT NOT NULL,
-  "email" TEXT NOT NULL UNIQUE,
+  "email" TEXT NOT NULL,
   "emailVerified" BOOLEAN NOT NULL DEFAULT false,
   "image" TEXT,
   "createdAt" TEXT NOT NULL,
   "updatedAt" TEXT NOT NULL,
   "xAccessTokens" TEXT NOT NULL DEFAULT '[]',
-  "xRefreshTokens" TEXT NOT NULL DEFAULT '[]'
+  "xRefreshTokens" TEXT NOT NULL DEFAULT '[]',
+  "dWebhooks" TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS "session" (
