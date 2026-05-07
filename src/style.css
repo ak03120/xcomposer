@@ -6,7 +6,9 @@ body,
 }
 
 :root {
-  --app-font-sans: "Noto Sans JP", "BIZ UDPGothic", sans-serif;
+  --app-font-sans: sans-serif;
+  --md-ref-typeface-brand: var(--app-font-sans);
+  --md-ref-typeface-plain: var(--app-font-sans);
   --md-sys-color-primary: #0b57d0;
   --md-sys-color-on-primary: #ffffff;
   --md-sys-color-primary-container: #d3e3fd;
@@ -23,12 +25,19 @@ body,
   --md-sys-color-on-surface-variant: #44474f;
   --md-sys-color-outline: #74777f;
   --md-sys-color-error: #ba1a1a;
+  --md-sys-typescale-display-large-font: var(--app-font-sans);
+  --md-sys-typescale-display-medium-font: var(--app-font-sans);
+  --md-sys-typescale-display-small-font: var(--app-font-sans);
+  --md-sys-typescale-headline-large-font: var(--app-font-sans);
+  --md-sys-typescale-headline-medium-font: var(--app-font-sans);
+  --md-sys-typescale-headline-small-font: var(--app-font-sans);
   --md-sys-typescale-body-medium-font: var(--app-font-sans);
   --md-sys-typescale-body-small-font: var(--app-font-sans);
   --md-sys-typescale-body-large-font: var(--app-font-sans);
   --md-sys-typescale-label-medium-font: var(--app-font-sans);
   --md-sys-typescale-label-small-font: var(--app-font-sans);
   --md-sys-typescale-label-large-font: var(--app-font-sans);
+  --md-sys-typescale-title-small-font: var(--app-font-sans);
   --md-sys-typescale-title-medium-font: var(--app-font-sans);
   --md-sys-typescale-title-large-font: var(--app-font-sans);
 }
@@ -49,6 +58,21 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+md-dialog,
+md-filled-button,
+md-filled-tonal-button,
+md-outlined-button,
+md-text-button,
+md-filled-tonal-icon-button,
+md-outlined-icon-button,
+md-menu,
+md-menu-item,
+md-outlined-select,
+md-select-option,
+md-outlined-text-field {
+  font-family: var(--app-font-sans);
 }
 
 :root[data-theme="dark"] {
