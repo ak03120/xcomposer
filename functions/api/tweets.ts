@@ -3,6 +3,7 @@ import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
 import { getXMe, withTokenRefresh } from "../lib/x"
 import type { XAccount } from "../lib/x"
+import { parseDiscordWebhooks } from "../lib/discord-webhook-store"
 
 type XUploadResponse = {
   data?: { id?: string }
@@ -67,26 +68,6 @@ const createTweet = async (text: string, mediaIds: string[], accessToken: string
   }
 
   return { id: data.data.id, text: data.data.text }
-}
-
-const parseDiscordWebhooks = (value: string | null | undefined) => {
-  if (!value) {
-    return []
-  }
-
-  const parsedValue = JSON.parse(value) as unknown
-  if (!Array.isArray(parsedValue)) {
-    return []
-  }
-
-  return parsedValue.filter((item): item is { id: string; url: string } => {
-    if (!item || typeof item !== "object") {
-      return false
-    }
-
-    const webhook = item as Record<string, unknown>
-    return typeof webhook.id === "string" && typeof webhook.url === "string"
-  })
 }
 
 const notifyDiscordWebhook = async (webhookUrl: string, tweetId: string, profile: XProfile) => {

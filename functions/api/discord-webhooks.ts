@@ -1,12 +1,7 @@
 import type { Env } from "../lib/env"
 import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
-import { ulid } from "ulidx"
-
-type DiscordWebhook = {
-  id: string
-  url: string
-}
+import { addWebhook, getUserWebhooks } from "../lib/discord-webhook-store"
 
 const isHttpUrl = (value: string) => {
   try {
@@ -15,35 +10,6 @@ const isHttpUrl = (value: string) => {
   } catch {
     return false
   }
-}
-
-const parseDiscordWebhooks = (value: string | null | undefined) => {
-  if (!value) {
-    return []
-  }
-
-  const parsedValue = JSON.parse(value) as unknown
-  if (!Array.isArray(parsedValue)) {
-    return []
-  }
-
-  return parsedValue.filter((item): item is DiscordWebhook => {
-    if (!item || typeof item !== "object") {
-      return false
-    }
-
-    const webhook = item as Record<string, unknown>
-    return typeof webhook.id === "string" && typeof webhook.url === "string"
-  })
-}
-
-const getUserWebhooks = async (db: D1Database, userId: string) => {
-  const row = await db
-    .prepare(`SELECT "dWebhooks" FROM "user" WHERE "id" = ?1`)
-    .bind(userId)
-    .first<{ dWebhooks?: string | null }>()
-
-  return row ? parseDiscordWebhooks(row.dWebhooks) : []
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
@@ -72,13 +38,5 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "Discord ウェブフックはURL形式で入力してください。" }, { status: 400 })
   }
 
-  const webhooks = await getUserWebhooks(env.DB, session.user.id)
-  const nextWebhooks = [...webhooks, { id: ulid(), url }]
-
-  await env.DB
-    .prepare(`UPDATE "user" SET "dWebhooks" = ?1, "updatedAt" = ?2 WHERE "id" = ?3`)
-    .bind(JSON.stringify(nextWebhooks), new Date().toISOString(), session.user.id)
-    .run()
-
-  return json({ webhooks: nextWebhooks })
+  return json({ webhooks: await addWebhook(env.DB, session.user.id, url) })
 }
