@@ -33,8 +33,9 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const clientId = env.X_CLIENT_ID || ""
   const clientSecret = env.X_CLIENT_SECRET || ""
 
-  const settled = await Promise.allSettled(
-    accessTokens.map(async (accessToken, index) => {
+  const accounts: AccountOption[] = []
+  for (const [index, accessToken] of accessTokens.entries()) {
+    try {
       const account: XAccount = {
         userId: session.user.id,
         tokenIndex: index,
@@ -44,19 +45,14 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 
       const me = await withTokenRefresh(env.DB, account, clientId, clientSecret, getXMe)
 
-      return {
+      accounts.push({
         id: String(index),
         label: me.name,
         username: me.username,
         image: me.profile_image_url,
-      } satisfies AccountOption
-    }),
-  )
-
-  const accounts: AccountOption[] = []
-  for (const result of settled) {
-    if (result.status === "fulfilled") {
-      accounts.push(result.value)
+      } satisfies AccountOption)
+    } catch {
+      // ignored
     }
   }
 
