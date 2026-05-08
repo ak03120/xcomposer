@@ -7,6 +7,7 @@ import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
 import { authClient } from "@/lib/auth-client"
+import { getDiscordWebhookLabel } from "@/lib/discord-webhook"
 import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
 import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
@@ -145,15 +146,6 @@ const handleDiscordWebhookChange = (event: Event) => {
   selectedDiscordWebhookId.value = (event.target as HTMLElement & { value?: string }).value || ""
 }
 
-const getDiscordWebhookLabel = (url: string) => {
-  const match = url.match(/^https?:\/\/discord\.com\/api\/webhooks\/([^/]+)\/(.+)$/)
-  if (!match) {
-    return url.replace(/^https?:\/\//, "")
-  }
-
-  const [, webhookId, token] = match
-  return `${webhookId}/${token.slice(0, 4)}...`
-}
 
 const openDiscordWebhookDialog = () => {
   discordWebhookDialog.value?.open()
