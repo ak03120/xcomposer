@@ -3,14 +3,7 @@ import { kyselyAdapter } from "@better-auth/kysely-adapter"
 import { Kysely } from "kysely"
 import { D1Dialect } from "kysely-d1"
 import { ulid } from "ulidx"
-
-type Env = {
-  DB: D1Database
-  BETTER_AUTH_SECRET?: string
-  BETTER_AUTH_URL?: string
-  G_CLIENT_ID?: string
-  G_CLIENT_SECRET?: string
-}
+import type { Env } from "./env"
 
 const defaultBaseUrl = "http://localhost:5173"
 const defaultSecret = "11618423-d4c7-41c8-b4a1-c45d0ab4badf"
