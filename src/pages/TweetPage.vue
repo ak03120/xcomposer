@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { watch } from "vue"
+import { ref } from "vue"
+import AccountMenu from "@/components/AccountMenu.vue"
 import AddDiscordWebhookDialog from "@/components/AddDiscordWebhookDialog.vue"
 import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
-import { ref } from "vue"
 import { getDiscordWebhookLabel } from "@/lib/discord-webhook"
 import { useAuth } from "@/composables/useAuth"
 import { useImagePicker } from "@/composables/useImagePicker"
@@ -45,7 +46,6 @@ const {
   postTweet,
 } = useTweetComposer(isSignedIn, signedInUserId, selectedImages, clearSelectedImages)
 
-const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const discordWebhookDialog = ref<InstanceType<typeof AddDiscordWebhookDialog> | null>(null)
 const discordWebhookSelect = ref<HTMLElement | null>(null)
 
@@ -75,20 +75,6 @@ const startXOAuth = async () => {
   if (err) errorMessage.value = err
 }
 
-const handleSignOut = async () => {
-  if (accountMenu.value) {
-    accountMenu.value.open = false
-  }
-  await signOut()
-}
-
-const toggleAccountMenu = () => {
-  if (!accountMenu.value) {
-    return
-  }
-
-  accountMenu.value.open = !accountMenu.value.open
-}
 
 watch(
   isSignedIn,
@@ -114,39 +100,12 @@ watch(
   <main class="page-shell" aria-label="Tweet page">
     <NavBar title="XCOMPOSER">
       <template #actions>
-        <template v-if="isAuthResolved">
-        <md-filled-tonal-button
-          v-if="isSignedIn"
-          id="google-account-button"
-          class="google-account-button"
-          type="button"
-          @click="toggleAccountMenu"
-        >
-          <img
-            v-if="sessionUser?.image"
-            class="google-avatar"
-            :src="sessionUser.image"
-            :alt="sessionUser.name"
-          />
-          <svg v-else class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.9-5.4 3.9-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.6 3.6 14.5 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12S6.9 21.3 12 21.3c6.9 0 8.6-4.8 8.6-7.3 0-.5-.1-.9-.1-1.3Z"/>
-            <path fill="#4285F4" d="M20.5 12c0-.5-.1-.9-.1-1.3H12v3.9h4.8c-.2 1.1-.9 2-1.8 2.6v2.2h2.9c1.7-1.6 2.6-4 2.6-7.4Z"/>
-            <path fill="#FBBC05" d="M6.4 14.3c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V8.1H3.4C2.9 9.2 2.6 10.5 2.6 12s.3 2.8.8 3.9Z"/>
-            <path fill="#34A853" d="M12 21.3c2.5 0 4.6-.8 6.1-2.2l-2.9-2.2c-.8.6-1.8 1-3.2 1-2.4 0-4.5-1.6-5.3-3.8H3.6v2.3c1.5 3 4.6 4.9 8.4 4.9Z"/>
-          </svg>
-        </md-filled-tonal-button>
-        <md-menu
-          ref="accountMenu"
-          anchor="google-account-button"
-          positioning="popover"
-          quick
-          class="account-menu"
-        >
-        <md-menu-item @click="handleSignOut">
-          <div slot="headline">ログアウト</div>
-        </md-menu-item>
-        </md-menu>
-        </template>
+        <AccountMenu
+          v-if="isAuthResolved && isSignedIn"
+          :image="sessionUser?.image"
+          :name="sessionUser?.name"
+          @sign-out="signOut"
+        />
       </template>
     </NavBar>
 
@@ -411,25 +370,4 @@ watch(
   align-self: flex-end;
 }
 
-.google-account-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.google-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.google-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.account-menu {
-  --md-menu-container-color: var(--md-sys-color-surface-container);
-}
 </style>
