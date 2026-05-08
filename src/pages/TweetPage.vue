@@ -72,9 +72,9 @@ const resetComposerForm = () => {
 }
 
 const resetComposerAfterPost = () => {
-  tweetText.value = ""
   hasTriedSubmit.value = false
   errorMessage.value = ""
+  tweetText.value = ""
   clearSelectedImages()
 }
 
