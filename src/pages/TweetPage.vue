@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue"
+import { computed, ref, watch } from "vue"
 import { storeToRefs } from "pinia"
 import { ulid } from "ulidx"
 import AddDiscordWebhookDialog from "@/components/AddDiscordWebhookDialog.vue"
@@ -11,18 +11,12 @@ import { getDiscordWebhookLabel } from "@/lib/discord-webhook"
 import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
 import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
-
-type SelectedImage = {
-  id: string
-  file: File
-  url: string
-}
+import { useImagePicker } from "@/composables/useImagePicker"
 
 const maxTweetLength = 280
 const X_OAUTH_SCOPES = "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write media.write"
 const tweetText = ref("")
-const selectedImages = ref<SelectedImage[]>([])
-const fileInput = ref<HTMLInputElement | null>(null)
+const { selectedImages, fileInput, clearSelectedImages, openFilePicker, handleFileSelection, removeImage } = useImagePicker()
 const isPosting = ref(false)
 const hasTriedSubmit = ref(false)
 const statusMessage = ref("")
@@ -57,11 +51,6 @@ const tweetSupportingText = computed(() => {
   return characterCountText.value
 })
 const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isPosting.value)
-
-const clearSelectedImages = () => {
-  selectedImages.value.forEach((image) => URL.revokeObjectURL(image.url))
-  selectedImages.value = []
-}
 
 const resetComposerForm = () => {
   tweetText.value = ""
@@ -164,10 +153,6 @@ const addDiscordWebhook = async (url: string) => {
   }
 }
 
-const openFilePicker = () => {
-  fileInput.value?.click()
-}
-
 const generateCodeVerifier = () => {
   const array = new Uint8Array(32)
   crypto.getRandomValues(array)
@@ -251,29 +236,6 @@ const toggleAccountMenu = () => {
   accountMenu.value.open = !accountMenu.value.open
 }
 
-const handleFileSelection = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || []).filter((file) => file.type.startsWith("image/"))
-  const slots = Math.max(0, 4 - selectedImages.value.length)
-  const images = files.slice(0, slots).map((file) => ({
-    id: ulid(),
-    file,
-    url: URL.createObjectURL(file),
-  }))
-
-  selectedImages.value = [...selectedImages.value, ...images]
-  input.value = ""
-}
-
-const removeImage = (imageId: string) => {
-  const image = selectedImages.value.find((item) => item.id === imageId)
-  if (image) {
-    URL.revokeObjectURL(image.url)
-  }
-
-  selectedImages.value = selectedImages.value.filter((item) => item.id !== imageId)
-}
-
 const postTweet = async () => {
   hasTriedSubmit.value = true
 
@@ -346,9 +308,6 @@ watch(
   },
 )
 
-onBeforeUnmount(() => {
-  clearSelectedImages()
-})
 
 </script>
 
