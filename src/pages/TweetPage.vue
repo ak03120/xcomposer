@@ -6,17 +6,18 @@ import AddDiscordWebhookDialog from "@/components/AddDiscordWebhookDialog.vue"
 import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
-import { authClient } from "@/lib/auth-client"
 import { getDiscordWebhookLabel } from "@/lib/discord-webhook"
 import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
 import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
+import { useAuth } from "@/composables/useAuth"
 import { useImagePicker } from "@/composables/useImagePicker"
 
 const maxTweetLength = 280
 const X_OAUTH_SCOPES = "tweet.read tweet.write tweet.moderate.write users.read follows.read follows.write offline.access space.read mute.read mute.write like.read like.write list.read list.write block.read block.write bookmark.read bookmark.write media.write"
 const tweetText = ref("")
 const { selectedImages, fileInput, clearSelectedImages, openFilePicker, handleFileSelection, removeImage } = useImagePicker()
+const { session, lastSignedInUserId, isAuthResolved, isSignedIn, signedInUserId, sessionUser, isSigningInWithGoogle, signInWithGoogle, signOut } = useAuth()
 const isPosting = ref(false)
 const hasTriedSubmit = ref(false)
 const statusMessage = ref("")
@@ -29,12 +30,7 @@ const { webhooks: discordWebhooks, selectedWebhookId: selectedDiscordWebhookId, 
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const discordWebhookDialog = ref<InstanceType<typeof AddDiscordWebhookDialog> | null>(null)
 const discordWebhookSelect = ref<HTMLElement | null>(null)
-const session = authClient.useSession()
-const lastSignedInUserId = ref("")
-const isAuthResolved = computed(() => !session.value.isPending)
-const isSignedIn = computed(() => Boolean(session.value.data?.user))
 const isComposerDisabled = computed(() => !isSignedIn.value || isPosting.value)
-const signedInUserId = computed(() => session.value.data?.user?.id || "")
 
 const remainingCharacters = computed(() => maxTweetLength - tweetText.value.length)
 const characterCountText = computed(() => `${tweetText.value.length}/${maxTweetLength}`)
@@ -211,21 +207,11 @@ const startXOAuth = async () => {
   }
 }
 
-const isSigningInWithGoogle = ref(false)
-
-const signInWithGoogle = async () => {
-  isSigningInWithGoogle.value = true
-  await authClient.signIn.social({
-    provider: "google",
-    callbackURL: window.location.origin,
-  })
-}
-
-const signOut = async () => {
+const handleSignOut = async () => {
   if (accountMenu.value) {
     accountMenu.value.open = false
   }
-  await authClient.signOut()
+  await signOut()
 }
 
 const toggleAccountMenu = () => {
@@ -324,10 +310,10 @@ watch(
           @click="toggleAccountMenu"
         >
           <img
-            v-if="session.data?.user?.image"
+            v-if="sessionUser?.image"
             class="google-avatar"
-            :src="session.data.user.image"
-            :alt="session.data.user.name"
+            :src="sessionUser.image"
+            :alt="sessionUser.name"
           />
           <svg v-else class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.9-5.4 3.9-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.8 0 3 .8 3.7 1.5l2.5-2.4C16.6 3.6 14.5 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12S6.9 21.3 12 21.3c6.9 0 8.6-4.8 8.6-7.3 0-.5-.1-.9-.1-1.3Z"/>
@@ -343,7 +329,7 @@ watch(
           quick
           class="account-menu"
         >
-        <md-menu-item @click="signOut">
+        <md-menu-item @click="handleSignOut">
           <div slot="headline">ログアウト</div>
         </md-menu-item>
         </md-menu>
