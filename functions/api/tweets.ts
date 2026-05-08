@@ -4,6 +4,7 @@ import { json } from "../lib/http"
 import { getXMe, withTokenRefresh } from "../lib/x"
 import type { XAccount } from "../lib/x"
 import { parseDiscordWebhooks } from "../lib/discord-webhook-store"
+import { getXTokens } from "../lib/x-token-store"
 
 type XUploadResponse = {
   data?: { id?: string }
@@ -129,20 +130,21 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "accountId が不正です。" }, { status: 400 })
   }
 
-  const row = await env.DB
-    .prepare(`SELECT "xAccessTokens", "xRefreshTokens", "dWebhooks" FROM "user" WHERE "id" = ?1`)
-    .bind(session.user.id)
-    .first<{ xAccessTokens: string; xRefreshTokens: string; dWebhooks?: string }>()
+  const [tokens, dWebhooksRow] = await Promise.all([
+    getXTokens(env.DB, session.user.id),
+    typeof discordWebhookId === "string" && discordWebhookId
+      ? env.DB.prepare(`SELECT "dWebhooks" FROM "user" WHERE "id" = ?1`).bind(session.user.id).first<{ dWebhooks?: string }>()
+      : Promise.resolve(null),
+  ])
 
-  if (!row) {
+  if (!tokens) {
     return json({ error: "ユーザーが見つかりません。" }, { status: 404 })
   }
 
-  const accessTokens = JSON.parse(row.xAccessTokens) as string[]
-  const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
+  const { accessTokens, refreshTokens } = tokens
   const accessToken = accessTokens[tokenIndex]
-  const discordWebhookUrl = typeof discordWebhookId === "string" && discordWebhookId
-    ? parseDiscordWebhooks(row.dWebhooks || "[]").find((webhook) => webhook.id === discordWebhookId)?.url
+  const discordWebhookUrl = dWebhooksRow
+    ? parseDiscordWebhooks(dWebhooksRow.dWebhooks).find((webhook) => webhook.id === discordWebhookId)?.url
     : undefined
 
   if (!accessToken) {

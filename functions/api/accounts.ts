@@ -3,6 +3,7 @@ import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
 import { getXMe, withTokenRefresh } from "../lib/x"
 import type { XAccount } from "../lib/x"
+import { getXTokens } from "../lib/x-token-store"
 
 type AccountOption = {
   id: string
@@ -19,17 +20,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     return json({ error: "認証が必要です。" }, { status: 401 })
   }
 
-  const row = await env.DB
-    .prepare(`SELECT "xAccessTokens", "xRefreshTokens" FROM "user" WHERE "id" = ?1`)
-    .bind(session.user.id)
-    .first<{ xAccessTokens: string; xRefreshTokens: string }>()
+  const tokens = await getXTokens(env.DB, session.user.id)
 
-  if (!row) {
+  if (!tokens) {
     return json({ accounts: [] })
   }
 
-  const accessTokens = JSON.parse(row.xAccessTokens) as string[]
-  const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
+  const { accessTokens, refreshTokens } = tokens
   const clientId = env.X_CLIENT_ID || ""
   const clientSecret = env.X_CLIENT_SECRET || ""
 

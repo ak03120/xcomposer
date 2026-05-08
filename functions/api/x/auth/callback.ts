@@ -2,6 +2,7 @@ import type { Env } from "../../../lib/env"
 import { createAuth } from "../../../lib/auth"
 import { json } from "../../../lib/http"
 import { getXMe } from "../../../lib/x"
+import { appendXToken } from "../../../lib/x-token-store"
 
 type XTokenResponse = {
   access_token?: string
@@ -56,25 +57,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 
   await getXMe(tokenData.access_token)
 
-  const row = await env.DB
-    .prepare(`SELECT "xAccessTokens", "xRefreshTokens" FROM "user" WHERE "id" = ?1`)
-    .bind(session.user.id)
-    .first<{ xAccessTokens: string; xRefreshTokens: string }>()
-
-  if (!row) {
+  try {
+    await appendXToken(env.DB, session.user.id, tokenData.access_token, tokenData.refresh_token || "")
+  } catch {
     return json({ error: "ユーザーが見つかりません。" }, { status: 404 })
   }
-
-  const accessTokens = JSON.parse(row.xAccessTokens) as string[]
-  const refreshTokens = JSON.parse(row.xRefreshTokens) as string[]
-
-  accessTokens.push(tokenData.access_token)
-  refreshTokens.push(tokenData.refresh_token || "")
-
-  await env.DB
-    .prepare(`UPDATE "user" SET "xAccessTokens" = ?1, "xRefreshTokens" = ?2, "updatedAt" = ?3 WHERE "id" = ?4`)
-    .bind(JSON.stringify(accessTokens), JSON.stringify(refreshTokens), new Date().toISOString(), session.user.id)
-    .run()
 
   return json({ ok: true })
 }
