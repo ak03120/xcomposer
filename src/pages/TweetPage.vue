@@ -1,136 +1,53 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue"
-import { storeToRefs } from "pinia"
+import { watch } from "vue"
 import AddDiscordWebhookDialog from "@/components/AddDiscordWebhookDialog.vue"
 import Footer from "@/components/Footer.vue"
 import LoginScreen from "@/components/LoginScreen.vue"
 import NavBar from "@/components/NavBar.vue"
+import { ref } from "vue"
 import { getDiscordWebhookLabel } from "@/lib/discord-webhook"
-import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
-import { useAccountsStore } from "@/stores/accounts"
-import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
 import { useAuth } from "@/composables/useAuth"
 import { useImagePicker } from "@/composables/useImagePicker"
+import { useTweetComposer } from "@/composables/useTweetComposer"
 import { useXOAuth } from "@/composables/useXOAuth"
 
-const maxTweetLength = 280
-const tweetText = ref("")
 const { selectedImages, fileInput, clearSelectedImages, openFilePicker, handleFileSelection, removeImage } = useImagePicker()
-const { session, lastSignedInUserId, isAuthResolved, isSignedIn, signedInUserId, sessionUser, isSigningInWithGoogle, signInWithGoogle, signOut } = useAuth()
+const { session: _session, lastSignedInUserId, isAuthResolved, isSignedIn, signedInUserId, sessionUser, isSigningInWithGoogle, signInWithGoogle, signOut } = useAuth()
 const { startXOAuth: startXOAuthFlow } = useXOAuth()
-const isPosting = ref(false)
-const hasTriedSubmit = ref(false)
-const statusMessage = ref("")
-const postedTweetUrl = ref("")
-const errorMessage = ref("")
-const accountStore = useAccountsStore()
-const discordWebhooksStore = useDiscordWebhooksStore()
-const { accounts, selectedAccountId, isLoading: isLoadingAccounts } = storeToRefs(accountStore)
-const { webhooks: discordWebhooks, selectedWebhookId: selectedDiscordWebhookId, isLoading: isLoadingDiscordWebhooks } = storeToRefs(discordWebhooksStore)
+const {
+  accounts,
+  selectedAccountId,
+  isLoadingAccounts,
+  discordWebhooks,
+  selectedDiscordWebhookId,
+  isLoadingDiscordWebhooks,
+  accountStore,
+  discordWebhooksStore,
+  tweetText,
+  isPosting,
+  statusMessage,
+  postedTweetUrl,
+  errorMessage,
+  isAccountMissing,
+  shouldShowAccountError,
+  shouldShowTweetError,
+  accountSupportingText,
+  tweetSupportingText,
+  canPost,
+  isComposerDisabled,
+  resetComposerForm,
+  restoreComposerDraft,
+  clearComposerDraft,
+  loadAccounts,
+  handleAccountChange,
+  handleTextInput,
+  handleDiscordWebhookChange,
+  postTweet,
+} = useTweetComposer(isSignedIn, signedInUserId, selectedImages, clearSelectedImages)
+
 const accountMenu = ref<(HTMLElement & { open?: boolean }) | null>(null)
 const discordWebhookDialog = ref<InstanceType<typeof AddDiscordWebhookDialog> | null>(null)
 const discordWebhookSelect = ref<HTMLElement | null>(null)
-const isComposerDisabled = computed(() => !isSignedIn.value || isPosting.value)
-
-const remainingCharacters = computed(() => maxTweetLength - tweetText.value.length)
-const characterCountText = computed(() => `${tweetText.value.length}/${maxTweetLength}`)
-const isAccountMissing = computed(() => !selectedAccountId.value)
-const isTweetMissing = computed(() => tweetText.value.trim().length === 0)
-const shouldShowAccountError = computed(() => hasTriedSubmit.value && isAccountMissing.value)
-const shouldShowTweetError = computed(() => hasTriedSubmit.value && (isTweetMissing.value || remainingCharacters.value < 0))
-const accountSupportingText = computed(() => shouldShowAccountError.value ? "投稿アカウントは必須です" : "")
-const tweetSupportingText = computed(() => {
-  if (shouldShowTweetError.value && isTweetMissing.value) {
-    return "本文は必須です"
-  }
-
-  return characterCountText.value
-})
-const canPost = computed(() => Boolean(selectedAccountId.value) && tweetText.value.trim().length > 0 && remainingCharacters.value >= 0 && !isPosting.value)
-
-const resetComposerForm = () => {
-  tweetText.value = ""
-  selectedDiscordWebhookId.value = ""
-  hasTriedSubmit.value = false
-  postedTweetUrl.value = ""
-  errorMessage.value = ""
-  clearSelectedImages()
-}
-
-const resetComposerAfterPost = () => {
-  hasTriedSubmit.value = false
-  errorMessage.value = ""
-  tweetText.value = ""
-  clearSelectedImages()
-}
-
-const restoreComposerDraft = () => {
-  if (!signedInUserId.value) {
-    return
-  }
-
-  const draft = loadTweetDraft(signedInUserId.value)
-  if (!draft) {
-    return
-  }
-
-  tweetText.value = draft.tweetText
-  selectedAccountId.value = draft.selectedAccountId
-  selectedDiscordWebhookId.value = draft.selectedDiscordWebhookId
-}
-
-const persistComposerDraft = () => {
-  if (!signedInUserId.value) {
-    return
-  }
-
-  saveTweetDraft(signedInUserId.value, {
-    tweetText: tweetText.value,
-    selectedAccountId: selectedAccountId.value,
-    selectedDiscordWebhookId: selectedDiscordWebhookId.value,
-  })
-}
-
-const clearComposerDraft = (userId = signedInUserId.value) => {
-  if (!userId) {
-    return
-  }
-
-  clearTweetDraft(userId)
-}
-
-const loadAccounts = async () => {
-  errorMessage.value = ""
-
-  try {
-    await Promise.all([
-      accountStore.loadAccounts(),
-      discordWebhooksStore.loadWebhooks(),
-    ])
-  } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "フォーム情報を取得できませんでした。"
-  }
-}
-
-const handleAccountChange = (event: Event) => {
-  selectedAccountId.value = (event.target as HTMLElement & { value?: string }).value || ""
-  if (selectedAccountId.value) {
-    hasTriedSubmit.value = false
-  }
-}
-
-
-const handleTextInput = (event: Event) => {
-  tweetText.value = (event.target as HTMLElement & { value?: string }).value || ""
-  if (tweetText.value.trim().length > 0) {
-    hasTriedSubmit.value = false
-  }
-}
-
-const handleDiscordWebhookChange = (event: Event) => {
-  selectedDiscordWebhookId.value = (event.target as HTMLElement & { value?: string }).value || ""
-}
-
 
 const openDiscordWebhookDialog = () => {
   discordWebhookDialog.value?.open()
@@ -173,50 +90,6 @@ const toggleAccountMenu = () => {
   accountMenu.value.open = !accountMenu.value.open
 }
 
-const postTweet = async () => {
-  hasTriedSubmit.value = true
-
-  if (!canPost.value) {
-    if (isAccountMissing.value) {
-      errorMessage.value = "投稿アカウントは必須です。"
-    } else if (isTweetMissing.value) {
-      errorMessage.value = "本文は必須です。"
-    }
-    return
-  }
-
-  isPosting.value = true
-  statusMessage.value = ""
-  postedTweetUrl.value = ""
-  errorMessage.value = ""
-
-  try {
-    const formData = new FormData()
-    formData.append("accountId", selectedAccountId.value)
-    formData.append("text", tweetText.value.trim())
-    if (selectedDiscordWebhookId.value) {
-      formData.append("discordWebhookId", selectedDiscordWebhookId.value)
-    }
-    selectedImages.value.forEach((image) => formData.append("images", image.file))
-
-    const response = await fetch("/api/tweets", { method: "POST", body: formData })
-    const data = await response.json<{ id?: string; error?: string }>()
-
-    if (!response.ok) {
-      throw new Error(data.error || "投稿に失敗しました。")
-    }
-
-    statusMessage.value = "投稿しました。"
-    postedTweetUrl.value = data.id ? `https://x.com/i/status/${data.id}` : ""
-    resetComposerAfterPost()
-    persistComposerDraft()
-  } catch (error) {
-    errorMessage.value = error instanceof Error ? error.message : "投稿に失敗しました。"
-  } finally {
-    isPosting.value = false
-  }
-}
-
 watch(
   isSignedIn,
   async (signedIn) => {
@@ -235,17 +108,6 @@ watch(
   },
   { immediate: true },
 )
-
-watch(
-  [tweetText, selectedAccountId, selectedDiscordWebhookId],
-  () => {
-    if (isSignedIn.value) {
-      persistComposerDraft()
-    }
-  },
-)
-
-
 </script>
 
 <template>
@@ -409,123 +271,74 @@ watch(
 
 <style scoped>
 .page-shell {
-  box-sizing: border-box;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
 }
 
 .compose-surface {
-  box-sizing: border-box;
-  width: min(100%, 720px);
-  margin: 20px auto 0;
-  padding: 0 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
 }
 
 .page-header {
-  margin-bottom: 28px;
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 24px;
 }
 
-h1 {
+.page-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
   margin: 0;
-  color: var(--md-sys-color-on-surface);
-  font-size: clamp(2rem, 8vw, 3rem);
-  line-height: 1.1;
-  font-weight: 500;
-}
-
-.page-header p:last-child {
-  margin: 12px 0 0;
-  color: var(--md-sys-color-on-surface-variant);
-  line-height: 1.7;
-}
-
-.compose-form,
-.stack-section {
-  display: flex;
-  flex-direction: column;
 }
 
 .compose-form {
-  gap: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.account-select {
+  width: 100%;
+}
+
+.account-option__avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.add-account-button {
+  align-self: flex-start;
+}
+
+.tweet-input {
+  width: 100%;
+  resize: vertical;
 }
 
 .stack-section {
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.compose-divider {
-  width: 100%;
-  margin: 4px 0;
-  border: 0;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
-}
-
-md-outlined-select,
-md-outlined-text-field,
-.post-button {
-  width: 100%;
-}
-
-.selected-account,
-.media-action {
-  color: var(--md-sys-color-on-surface-variant);
-  font-size: 0.875rem;
-}
-
-.account-option {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-
-.account-option__avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  object-fit: cover;
-  flex: 0 0 auto;
-}
-
-.discord-webhook-select {
-}
-
-.discord-webhook-option__headline {
-  max-width: 100%;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  white-space: normal;
-}
-
 .media-action {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .image-icon {
   width: 24px;
   height: 24px;
-}
-
-.google-account-button {
-  min-width: 40px;
-  padding-inline: 8px;
-}
-
-.google-icon {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
-
-.google-avatar {
-  width: 24px;
-  height: 24px;
-  display: block;
-  border-radius: 999px;
-  object-fit: cover;
 }
 
 .file-input {
@@ -534,60 +347,89 @@ md-outlined-text-field,
 
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(96px, 120px));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
 }
 
 .image-preview {
   position: relative;
   margin: 0;
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--md-sys-color-surface-container);
-  width: 120px;
-  height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .image-preview img {
   width: 100%;
-  height: 100%;
+  aspect-ratio: 1;
   object-fit: cover;
-  display: block;
+  border-radius: 8px;
 }
 
-.image-preview md-filled-tonal-button {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
+.compose-divider {
+  border: none;
+  border-top: 1px solid var(--md-sys-color-outline-variant);
+  margin: 0;
+}
+
+.discord-webhook-select {
+  width: 100%;
+}
+
+.discord-webhook-option__headline {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.add-discord-webhook-button {
+  align-self: flex-start;
 }
 
 .message {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.message span {
-  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .message-error {
-  color: #410002;
-  background: #ffdad6;
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
 }
 
 .message-success {
-  color: var(--md-sys-color-on-primary-container);
-  background: var(--md-sys-color-primary-container);
+  background-color: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
 }
 
-md-circular-progress {
-  --md-circular-progress-size: 18px;
-  --md-circular-progress-active-indicator-color: currentColor;
+.post-button {
+  align-self: flex-end;
+}
+
+.google-account-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.google-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.google-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.account-menu {
+  --md-menu-container-color: var(--md-sys-color-surface-container);
 }
 </style>
