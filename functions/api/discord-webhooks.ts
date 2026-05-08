@@ -1,6 +1,6 @@
 import type { Env } from "../lib/env"
-import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
+import { requireSession } from "../lib/middleware"
 import { addWebhook, getUserWebhooks } from "../lib/discord-webhook-store"
 
 const isHttpUrl = (value: string) => {
@@ -13,23 +13,16 @@ const isHttpUrl = (value: string) => {
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
-  const auth = createAuth(env)
-  const session = await auth.api.getSession({ headers: request.headers })
-
-  if (!session?.user?.id) {
-    return json({ error: "認証が必要です。" }, { status: 401 })
-  }
+  const session = await requireSession(request, env)
+  if (session instanceof Response) return session
 
   return json({ webhooks: await getUserWebhooks(env.DB, session.user.id) })
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
-  const auth = createAuth(env)
-  const session = await auth.api.getSession({ headers: request.headers })
+  const session = await requireSession(request, env)
+  if (session instanceof Response) return session
 
-  if (!session?.user?.id) {
-    return json({ error: "認証が必要です。" }, { status: 401 })
-  }
 
   const body = (await request.json()) as { url?: string }
   const url = body.url?.trim() || ""

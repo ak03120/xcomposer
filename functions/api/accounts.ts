@@ -1,6 +1,6 @@
 import type { Env } from "../lib/env"
-import { createAuth } from "../lib/auth"
 import { json } from "../lib/http"
+import { requireSession } from "../lib/middleware"
 import { getXMe, withTokenRefresh } from "../lib/x"
 import type { XAccount } from "../lib/x"
 import { getXTokens } from "../lib/x-token-store"
@@ -13,12 +13,8 @@ type AccountOption = {
 }
 
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
-  const auth = createAuth(env)
-  const session = await auth.api.getSession({ headers: request.headers })
-
-  if (!session?.user?.id) {
-    return json({ error: "認証が必要です。" }, { status: 401 })
-  }
+  const session = await requireSession(request, env)
+  if (session instanceof Response) return session
 
   const tokens = await getXTokens(env.DB, session.user.id)
 
