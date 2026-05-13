@@ -20,7 +20,8 @@ export const createAuth = (env: Env) => {
     },
     advanced: {
       database: {
-        generateId: () => ulid(),
+        generateId: ({ model }) =>
+          /^sessions?$/.test(model) ? crypto.randomUUID().replaceAll("-", "") : ulid(),
       },
     },
     socialProviders: {
