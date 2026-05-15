@@ -92,10 +92,6 @@ watch(
 
 <template>
   <section class="compose-surface">
-    <header class="page-header">
-      <h1>ポストを作成</h1>
-    </header>
-
     <form class="compose-form" @submit.prevent="postTweet">
       <md-outlined-select
         class="account-select"
@@ -210,17 +206,6 @@ watch(
   padding: 24px 16px 40px;
 }
 
-.page-header {
-  width: 100%;
-  max-width: 600px;
-  margin-bottom: 24px;
-}
-
-.page-header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-}
 
 .compose-form {
   display: flex;

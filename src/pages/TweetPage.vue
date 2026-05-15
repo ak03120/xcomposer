@@ -22,13 +22,17 @@ const { isAuthResolved, isSignedIn, sessionUser, isSigningInWithGoogle, signInWi
       </template>
     </NavBar>
 
+    <section v-if="!isAuthResolved" class="loading-section" aria-label="読み込み中">
+      <md-circular-progress indeterminate></md-circular-progress>
+    </section>
+
     <LoginScreen
-      v-if="isAuthResolved && !isSignedIn"
+      v-else-if="!isSignedIn"
       :is-loading="isSigningInWithGoogle"
       @login="signInWithGoogle"
     />
 
-    <TweetComposer v-else-if="isAuthResolved" />
+    <TweetComposer v-else />
 
     <Footer />
   </main>
@@ -39,5 +43,12 @@ const { isAuthResolved, isSignedIn, sessionUser, isSigningInWithGoogle, signInWi
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+}
+
+.loading-section {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 40px 16px;
 }
 </style>

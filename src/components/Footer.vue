@@ -24,8 +24,9 @@ onMounted(() => {
 <template>
   <footer class="app-footer">
     <div class="footer-inner">
-      <md-filled-tonal-button
+      <md-icon-button
         type="button"
+        :aria-label="isDarkMode ? 'ライトモードに切り替え' : 'ダークモードに切り替え'"
         @click="toggleTheme"
       >
         <svg v-if="isDarkMode" class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -34,7 +35,7 @@ onMounted(() => {
         <svg v-else class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path fill="currentColor" d="M12.1 22q-4 0-7-2.95Q2.1 16.1 2.1 12.1q0-3.6 2.38-6.4 2.37-2.8 5.92-3.5.5-.1.78.14.27.24.27.66 0 .12-.03.24-.02.11-.07.23-.3.7-.45 1.46-.15.77-.15 1.57 0 3.13 2.18 5.31Q15.1 14.1 18.23 14.1q.78 0 1.54-.15.77-.15 1.48-.45.1-.05.21-.07.12-.03.25-.03.42 0 .66.28.24.27.14.77-.7 3.55-3.48 5.92Q15.75 22 12.1 22Z" />
         </svg>
-      </md-filled-tonal-button>
+      </md-icon-button>
     </div>
   </footer>
 </template>
@@ -55,8 +56,14 @@ onMounted(() => {
   justify-content: center;
 }
 
+md-icon-button {
+  width: 48px;
+  height: 48px;
+  --md-icon-button-icon-size: 24px;
+}
+
 .theme-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
 </style>
