@@ -16,6 +16,7 @@ export const useAuth = () => {
     await authClient.signIn.social({
       provider: "google",
       callbackURL: window.location.origin,
+      errorCallbackURL: "/login/error",
     })
   }
 

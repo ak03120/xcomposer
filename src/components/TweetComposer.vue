@@ -92,7 +92,11 @@ watch(
 
 <template>
   <section class="compose-surface">
-    <form class="compose-form" @submit.prevent="postTweet">
+    <div v-if="isLoadingAccounts" class="loading-section" aria-label="投稿者アカウントを読み込み中">
+      <md-circular-progress indeterminate></md-circular-progress>
+    </div>
+
+    <form v-else class="compose-form" @submit.prevent="postTweet">
       <md-outlined-select
         class="account-select"
         label="投稿者アカウント"
@@ -206,6 +210,12 @@ watch(
   padding: 24px 16px 40px;
 }
 
+.loading-section {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
 
 .compose-form {
   display: flex;

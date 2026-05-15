@@ -59,7 +59,7 @@ defineExpose({
 </script>
 
 <template>
-  <md-dialog ref="dialog">
+  <md-dialog ref="dialog" class="discord-webhook-dialog">
     <div slot="headline">Discord ウェブフックを追加</div>
     <form id="discord-webhook-dialog-form" slot="content" class="discord-webhook-dialog-form" @submit.prevent="addWebhook">
       <md-outlined-text-field
@@ -80,11 +80,16 @@ defineExpose({
 </template>
 
 <style scoped>
+.discord-webhook-dialog {
+  min-width: min(540px, calc(100vw - 48px));
+}
+
 .discord-webhook-dialog-form {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-width: min(420px, calc(100vw - 64px));
+  width: 100%;
 }
 
 md-outlined-text-field {

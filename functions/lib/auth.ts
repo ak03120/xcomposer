@@ -18,6 +18,9 @@ export const createAuth = (env: Env) => {
     session: {
       expiresIn: 3600 * 24 * 30,
     },
+    onAPIError: {
+      errorURL: "/login/error",
+    },
     advanced: {
       database: {
         generateId: ({ model }) =>
