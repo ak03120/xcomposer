@@ -81,6 +81,7 @@ defineExpose({
 
 <style scoped>
 .discord-webhook-dialog {
+  z-index: 100;
   min-width: min(540px, calc(100vw - 48px));
 }
 
