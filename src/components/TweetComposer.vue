@@ -21,8 +21,6 @@ const {
   discordWebhooksStore,
   tweetText,
   isPosting,
-  statusMessage,
-  postedTweetUrl,
   errorMessage,
   isAccountMissing,
   shouldShowAccountError,
@@ -49,13 +47,10 @@ const openDiscordWebhookDialog = () => {
 }
 
 const addDiscordWebhook = async (url: string) => {
-  statusMessage.value = ""
-  postedTweetUrl.value = ""
   errorMessage.value = ""
 
   try {
     await discordWebhooksStore.addWebhook(url)
-    statusMessage.value = "Discord ウェブフックを保存しました。"
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : "Discord ウェブフックを保存できませんでした。"
   }
@@ -63,8 +58,6 @@ const addDiscordWebhook = async (url: string) => {
 
 const startXOAuth = async () => {
   if (!isSignedIn.value) return
-  statusMessage.value = ""
-  postedTweetUrl.value = ""
   errorMessage.value = ""
   const err = await startXOAuthFlow()
   if (err) errorMessage.value = err
@@ -184,12 +177,6 @@ watch(
       </md-filled-tonal-button>
 
       <div v-if="errorMessage" class="message message-error">{{ errorMessage }}</div>
-      <div v-if="statusMessage" class="message message-success">
-        <span>{{ statusMessage }}</span>
-        <md-filled-tonal-button v-if="postedTweetUrl" type="button" :href="postedTweetUrl" target="_blank" rel="noopener">
-          ツイートを表示
-        </md-filled-tonal-button>
-      </div>
 
       <md-filled-button class="post-button" type="submit" :disabled="!isSignedIn || !canPost">
         <md-circular-progress v-if="isPosting" slot="icon" indeterminate></md-circular-progress>
@@ -321,11 +308,6 @@ watch(
 .message-error {
   background-color: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
-}
-
-.message-success {
-  background-color: var(--md-sys-color-tertiary-container);
-  color: var(--md-sys-color-on-tertiary-container);
 }
 
 .post-button {

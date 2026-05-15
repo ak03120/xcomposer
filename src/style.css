@@ -3,6 +3,7 @@ body,
 #app {
   min-height: 100%;
   margin: 0;
+  font-family: sans-serif;
 }
 
 :root {
@@ -43,13 +44,11 @@ body,
 }
 
 html {
-  font-family: var(--app-font-sans);
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-surface);
 }
 
 body {
-  font-family: var(--app-font-sans);
   min-width: 320px;
   color: var(--md-sys-color-on-surface);
   background: var(--md-sys-color-surface);
@@ -61,21 +60,6 @@ textarea {
   font: inherit;
 }
 
-md-dialog,
-md-filled-button,
-md-filled-tonal-button,
-md-outlined-button,
-md-text-button,
-md-icon-button,
-md-filled-tonal-icon-button,
-md-outlined-icon-button,
-md-menu,
-md-menu-item,
-md-outlined-select,
-md-select-option,
-md-outlined-text-field {
-  font-family: var(--app-font-sans);
-}
 
 :root[data-theme="dark"] {
   --md-sys-color-primary: #aac7ff;

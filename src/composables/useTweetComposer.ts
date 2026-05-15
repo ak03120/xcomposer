@@ -1,6 +1,7 @@
 import { computed, ref, watch } from "vue"
 import type { ComputedRef, Ref } from "vue"
 import { storeToRefs } from "pinia"
+import { toast } from "vue-sonner"
 import { clearTweetDraft, loadTweetDraft, saveTweetDraft } from "@/lib/tweet-draft"
 import { useAccountsStore } from "@/stores/accounts"
 import { useDiscordWebhooksStore } from "@/stores/discord-webhooks"
@@ -27,8 +28,6 @@ export const useTweetComposer = (
   const tweetText = ref("")
   const isPosting = ref(false)
   const hasTriedSubmit = ref(false)
-  const statusMessage = ref("")
-  const postedTweetUrl = ref("")
   const errorMessage = ref("")
 
   const remainingCharacters = computed(() => maxTweetLength - tweetText.value.length)
@@ -52,7 +51,6 @@ export const useTweetComposer = (
     errorMessage.value = ""
     tweetText.value = ""
     selectedDiscordWebhookId.value = ""
-    postedTweetUrl.value = ""
     clearSelectedImages()
   }
 
@@ -121,16 +119,16 @@ export const useTweetComposer = (
 
     if (!canPost.value) {
       if (isAccountMissing.value) {
-        errorMessage.value = "投稿アカウントは必須です。"
+        toast.error("投稿アカウントは必須です。")
       } else if (isTweetMissing.value) {
-        errorMessage.value = "本文は必須です。"
+        toast.error("本文は必須です。")
+      } else if (remainingCharacters.value < 0) {
+        toast.error("本文が長すぎます。")
       }
       return
     }
 
     isPosting.value = true
-    statusMessage.value = ""
-    postedTweetUrl.value = ""
     errorMessage.value = ""
 
     try {
@@ -149,12 +147,17 @@ export const useTweetComposer = (
         throw new Error(data.error || "投稿に失敗しました。")
       }
 
-      statusMessage.value = "投稿しました。"
-      postedTweetUrl.value = data.id ? `https://x.com/i/status/${data.id}` : ""
+      const tweetUrl = data.id ? `https://x.com/i/status/${data.id}` : ""
+      toast.success("投稿しました。", tweetUrl ? {
+        action: {
+          label: "ツイートを表示",
+          onClick: () => window.open(tweetUrl, "_blank", "noopener"),
+        },
+      } : undefined)
       resetComposerAfterPost()
       persistComposerDraft()
     } catch (error) {
-      errorMessage.value = error instanceof Error ? error.message : "投稿に失敗しました。"
+      toast.error(error instanceof Error ? error.message : "投稿に失敗しました。")
     } finally {
       isPosting.value = false
     }
@@ -181,8 +184,6 @@ export const useTweetComposer = (
     tweetText,
     isPosting,
     hasTriedSubmit,
-    statusMessage,
-    postedTweetUrl,
     errorMessage,
     remainingCharacters,
     isAccountMissing,

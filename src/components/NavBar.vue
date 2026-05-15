@@ -38,7 +38,9 @@ defineProps<{
 }
 
 .top-app-bar__title {
-  font: var(--md-sys-typescale-title-large-font, 500 1.375rem/1.75rem "Noto Sans JP", "BIZ UDPGothic", sans-serif);
+  font-size: 1.375rem;
+  font-weight: 500;
+  line-height: 1.75rem;
   letter-spacing: 0;
 }
 
