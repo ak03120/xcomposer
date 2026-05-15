@@ -186,7 +186,7 @@ watch(
       <div v-if="errorMessage" class="message message-error">{{ errorMessage }}</div>
       <div v-if="statusMessage" class="message message-success">
         <span>{{ statusMessage }}</span>
-        <md-filled-tonal-button v-if="postedTweetUrl" :href="postedTweetUrl" target="_blank" rel="noopener">
+        <md-filled-tonal-button v-if="postedTweetUrl" type="button" :href="postedTweetUrl" target="_blank" rel="noopener">
           ツイートを表示
         </md-filled-tonal-button>
       </div>
